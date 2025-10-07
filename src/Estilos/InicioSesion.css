@@ -1,0 +1,85 @@
+.login-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background-image: url('../Imagenes/img1.jpg');
+  background-size: cover;
+  background-position: center;
+  font-family: 'Roboto Condesed', sans-serif;
+}
+
+.login-form-container {
+  background-color: rgba(250, 250, 250, 0.7);
+  padding: 40px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 350px;
+  height: auto; 
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.login-form-container h1 {
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  width: 100%; 
+  align-items: center; 
+}
+
+.login-form label {
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: #555;
+}
+
+.login-form input {
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 16px;
+  width: 100%; 
+}
+
+.login-form button {
+  padding: 10px;
+  background-color: #4e9e57;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  width: 100%; 
+}
+
+.login-form button:hover {
+  background-color: #396c3f;
+}
+
+.register-button {
+  padding: 10px;
+  background-color: #396c3f;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  margin-top: 15px; 
+  width: 100%; 
+}
+
+.register-button:hover {
+  background-color: #4e9e57;
+}
