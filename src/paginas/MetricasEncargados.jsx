@@ -146,17 +146,43 @@ const calcularMetricasEncargados = (tickets) => {
     return Object.values(encargados);
   };
 
+// Semanas fijas por mes (Lunes-Domingo) para Ago/Sep/Oct 2025
+const obtenerSemanasFijas = (mesSeleccionado) => {
+  const semanasPorMes = {
+    '2025-08': [
+      { inicio: new Date(2025, 6, 28), fin: new Date(2025, 7, 3) },   // 28 Jul - 3 Ago
+      { inicio: new Date(2025, 7, 4),  fin: new Date(2025, 7, 10) },  // 4 Ago - 10 Ago
+      { inicio: new Date(2025, 7, 11), fin: new Date(2025, 7, 17) },  // 11 Ago - 17 Ago
+      { inicio: new Date(2025, 7, 18), fin: new Date(2025, 7, 24) },  // 18 Ago - 24 Ago
+      { inicio: new Date(2025, 7, 25), fin: new Date(2025, 7, 31) },  // 25 Ago - 31 Ago
+    ],
+    '2025-09': [
+      { inicio: new Date(2025, 8, 1),  fin: new Date(2025, 8, 7) },   // 1 Sep - 7 Sep
+      { inicio: new Date(2025, 8, 8),  fin: new Date(2025, 8, 14) },  // 8 Sep - 14 Sep
+      { inicio: new Date(2025, 8, 15), fin: new Date(2025, 8, 21) },  // 15 Sep - 21 Sep
+      { inicio: new Date(2025, 8, 22), fin: new Date(2025, 8, 28) },  // 22 Sep - 28 Sep
+    ],
+    '2025-10': [
+      { inicio: new Date(2025, 8, 29), fin: new Date(2025, 9, 5) },   // 29 Sep - 5 Oct
+      { inicio: new Date(2025, 9, 6),  fin: new Date(2025, 9, 12) },  // 6 Oct - 12 Oct
+      { inicio: new Date(2025, 9, 13), fin: new Date(2025, 9, 19) },  // 13 Oct - 19 Oct
+      { inicio: new Date(2025, 9, 20), fin: new Date(2025, 9, 26) },  // 20 Oct - 26 Oct
+      { inicio: new Date(2025, 9, 27), fin: new Date(2025, 10, 2) },  // 27 Oct - 2 Nov
+    ],
+  };
+  return semanasPorMes[mesSeleccionado] || [];
+};
+
+const formatearFechaCorta = (fecha) => {
+  const dia = fecha.getDate().toString().padStart(2, '0');
+  const mes = (fecha.getMonth() + 1).toString().padStart(2, '0');
+  return `${dia}/${mes}`;
+};
+
 // Función para calcular métricas semanales
-const calcularMetricasSemanales = (tickets) => {
+const calcularMetricasSemanales = (tickets, mesSeleccionado = '2025-10') => {
   const encargados = {};
-  
-    // Definir las semanas de octubre 2025
-    const semana1 = new Date(2025, 9, 1);
-    const semana2 = new Date(2025, 9, 5);
-    const semana3 = new Date(2025, 9, 12);
-    const semana4 = new Date(2025, 9, 19);
-    const semana5 = new Date(2025, 9, 26);
-    const finOctubre = new Date(2025, 10, 2);
+  const semanas = obtenerSemanasFijas(mesSeleccionado);
 
   const tecnicosPermitidos = ['Jose Castro [jose.castro]', 'Jos� Morales [jose.morales]', 'Rolando Lopez [rolando.lopez]', 'Fernando Velasquez +50254892327 [fernando.velasquez]', 'Byron Borrayo +50254287799 [Byron.Borrayo]', 'Juan Jose Gomez +50242105695 [Juanj.gomez]', 'Saul Recinos [saul.recinos]'];
   
@@ -179,6 +205,19 @@ const calcularMetricasSemanales = (tickets) => {
     const aliasTecnico = obtenerAlias(tecnicoOriginal);
     
     if (!encargados[tecnicoOriginal]) {
+      // Crear estructura dinámica de semanas
+      const semanasEstructura = {};
+      semanas.forEach((_, index) => {
+        semanasEstructura[`semana${index + 1}`] = { 
+          nota: 0, 
+          encuestado: 0, 
+          totalEncuestas: 0, 
+          totalTiquetes: 0, 
+          totalTiquetesResueltos: 0, 
+          encuestasDetalle: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } 
+        };
+      });
+      
       encargados[tecnicoOriginal] = {
         nombre: aliasTecnico,
         nombreOriginal: tecnicoOriginal,
@@ -186,31 +225,19 @@ const calcularMetricasSemanales = (tickets) => {
         tiquetesResueltos: 0,
         encuestasRespondidas: 0,
         promedioDiario: 0,
-        semanas: {
-          semana5: { nota: 0, encuestado: 0, totalEncuestas: 0, totalTiquetes: 0, totalTiquetesResueltos: 0, encuestasDetalle: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } },
-          semana4: { nota: 0, encuestado: 0, totalEncuestas: 0, totalTiquetes: 0, totalTiquetesResueltos: 0, encuestasDetalle: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } },
-          semana3: { nota: 0, encuestado: 0, totalEncuestas: 0, totalTiquetes: 0, totalTiquetesResueltos: 0, encuestasDetalle: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } },
-          semana2: { nota: 0, encuestado: 0, totalEncuestas: 0, totalTiquetes: 0, totalTiquetesResueltos: 0, encuestasDetalle: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } },
-          semana1: { nota: 0, encuestado: 0, totalEncuestas: 0, totalTiquetes: 0, totalTiquetesResueltos: 0, encuestasDetalle: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } }
-        }
+        semanas: semanasEstructura
       };
     }
 
     const fechaTicket = new Date(ticket.Date);
     
-    // Determinar a qué semana de octubre pertenece el ticket
+    // Determinar a qué semana del mes pertenece el ticket (según rangos fijos L-D)
     let semanaActual = null;
-    if (fechaTicket >= semana5 && fechaTicket < finOctubre) {
-      semanaActual = 'semana5'; // 27 oct - 2 nov
-    } else if (fechaTicket >= semana4 && fechaTicket < semana5) {
-      semanaActual = 'semana5'; // 20 - 26 octubre
-    } else if (fechaTicket >= semana3 && fechaTicket < semana4) {
-      semanaActual = 'semana3'; // 13 - 19 octubre
-    } else if (fechaTicket >= semana2 && fechaTicket < semana3) {
-      semanaActual = 'semana2'; // 6 - 12 octubre
-    } else if (fechaTicket >= semana1 && fechaTicket < semana2) {
-      semanaActual = 'semana1'; // 28 sept - 5 octubre
-    }
+    semanas.forEach((semana, index) => {
+      if (fechaTicket >= semana.inicio && fechaTicket <= semana.fin) {
+        semanaActual = `semana${index + 1}`;
+      }
+    });
     
     if (semanaActual) {
       encargados[tecnicoOriginal].tiquetesAsignados++;
@@ -379,58 +406,31 @@ const calcularMetricasMensuales = (tickets) => {
   return Object.values(encargados);
 };
 
-// Función para generar archivo de notas semanales
+// Función para generar archivo de notas semanales (dinámico según semanas disponibles)
 const generarArchivoNotasSemanales = (metricasSemanales) => {
   const datosParaArchivo = metricasSemanales.map(encargado => {
-    return {
+    const salida = {
       nombre: encargado.nombre,
       nombreOriginal: encargado.nombreOriginal,
-      semana1: {
-        nota: encargado.semanas.semana1.nota,
-        encuestado: encargado.semanas.semana1.encuestado,
-        totalEncuestas: encargado.semanas.semana1.totalEncuestas,
-        totalTiquetesResueltos: encargado.semanas.semana1.totalTiquetesResueltos,
-        encuestasDetalle: encargado.semanas.semana1.encuestasDetalle
-      },
-      semana2: {
-        nota: encargado.semanas.semana2.nota,
-        encuestado: encargado.semanas.semana2.encuestado,
-        totalEncuestas: encargado.semanas.semana2.totalEncuestas,
-        totalTiquetesResueltos: encargado.semanas.semana2.totalTiquetesResueltos,
-        encuestasDetalle: encargado.semanas.semana2.encuestasDetalle
-      },
-      semana3: {
-        nota: encargado.semanas.semana3.nota,
-        encuestado: encargado.semanas.semana3.encuestado,
-        totalEncuestas: encargado.semanas.semana3.totalEncuestas,
-        totalTiquetesResueltos: encargado.semanas.semana3.totalTiquetesResueltos,
-        encuestasDetalle: encargado.semanas.semana3.encuestasDetalle
-      },
-      semana4: {
-        nota: encargado.semanas.semana4.nota,
-        encuestado: encargado.semanas.semana4.encuestado,
-        totalEncuestas: encargado.semanas.semana4.totalEncuestas,
-        totalTiquetesResueltos: encargado.semanas.semana4.totalTiquetesResueltos,
-        encuestasDetalle: encargado.semanas.semana4.encuestasDetalle
-      },
-      semana5: {
-        nota: encargado.semanas.semana5.nota,
-        encuestado: encargado.semanas.semana5.encuestado,
-        totalEncuestas: encargado.semanas.semana5.totalEncuestas,
-        totalTiquetesResueltos: encargado.semanas.semana5.totalTiquetesResueltos,
-        encuestasDetalle: encargado.semanas.semana5.encuestasDetalle
-      }
     };
+    // Agregar todas las semanas presentes en la estructura
+    Object.keys(encargado.semanas).forEach((semanaKey) => {
+      const s = encargado.semanas[semanaKey];
+      salida[semanaKey] = {
+        nota: s.nota,
+        encuestado: s.encuestado,
+        totalEncuestas: s.totalEncuestas,
+        totalTiquetesResueltos: s.totalTiquetesResueltos,
+        encuestasDetalle: s.encuestasDetalle,
+      };
+    });
+    return salida;
   });
 
-  // Crear archivo JSON con las métricas semanales
   const fechaActual = new Date();
   const nombreArchivo = `metricas_semanales_${fechaActual.getFullYear()}_${(fechaActual.getMonth() + 1).toString().padStart(2, '0')}_${fechaActual.getDate().toString().padStart(2, '0')}.json`;
-  
-  // En un entorno real, aquí se guardaría el archivo
   console.log('Datos para archivo de notas semanales:', JSON.stringify(datosParaArchivo, null, 2));
   console.log(`Archivo generado: ${nombreArchivo}`);
-  
   return datosParaArchivo;
 };
 
@@ -543,7 +543,8 @@ const calcularDatosGraficas = (metricasMensuales) => {
     return {
       datosTiquetes: [],
       datosEncuestados: [],
-      porcentajeEncuestados: 0
+      porcentajeEncuestados: 0,
+      porcentajeResueltos: 0
     };
   }
 
@@ -553,9 +554,10 @@ const calcularDatosGraficas = (metricasMensuales) => {
   const totalEncuestasRespondidas = metricasMensuales.reduce((sum, encargado) => sum + encargado.encuestasRespondidas, 0);
 
   // Datos para la gráfica de tickets
+  const porcentajeResueltos = totalTiquetesAsignados > 0 ? ((totalTiquetesResueltos / totalTiquetesAsignados) * 100).toFixed(0) : 0;
   const datosTiquetes = [
     { name: 'Tickets resueltos', value: totalTiquetesResueltos, color: '#000000' },
-    { name: 'Tickets asignados', value: totalTiquetesAsignados, color: '#8B0000' }
+    { name: 'Tickets pendientes', value: totalTiquetesAsignados - totalTiquetesResueltos, color: '#8B0000' }
   ];
 
   // Datos para la gráfica de encuestados
@@ -568,12 +570,13 @@ const calcularDatosGraficas = (metricasMensuales) => {
   return {
     datosTiquetes,
     datosEncuestados,
-    porcentajeEncuestados: parseInt(porcentajeEncuestados)
+    porcentajeEncuestados: parseInt(porcentajeEncuestados),
+    porcentajeResueltos: parseInt(porcentajeResueltos)
   };
 };
 
 function MetricasEncargados() {
-  const [, setTickets] = useState([]);
+  const [tickets, setTickets] = useState([]);
   const [metricas, setMetricas] = useState([]);
   const [metricasSemanales, setMetricasSemanales] = useState([]);
   const [metricasMensuales, setMetricasMensuales] = useState([]);
@@ -581,7 +584,8 @@ function MetricasEncargados() {
   const [promediosGenerales, setPromediosGenerales] = useState({});
   const [datosGraficas, setDatosGraficas] = useState({});
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ tech: '' });
+  const [filters, setFilters] = useState({ tech: '', semana: 'todas', mes: '2025-10' });
+  const semanasFijas = obtenerSemanasFijas(filters.mes);
 
   useEffect(() => {
     const fetchData = () => {
@@ -591,7 +595,7 @@ function MetricasEncargados() {
           if (Array.isArray(data)) {
             setTickets(data);
             const metricasCalculadas = calcularMetricasEncargados(data);
-            const metricasSemanalesCalculadas = calcularMetricasSemanales(data);
+            const metricasSemanalesCalculadas = calcularMetricasSemanales(data, filters.mes);
             const metricasMensualesCalculadas = calcularMetricasMensuales(data);
             const metricasSLACalculadas = calcularMetricasSLA(data);
             const promediosGeneralesCalculados = calcularPromediosGenerales(metricasMensualesCalculadas);
@@ -620,7 +624,25 @@ function MetricasEncargados() {
     const interval = setInterval(fetchData, 120000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [filters.mes]);
+
+  // Recalcular métricas semanales cuando cambie el mes
+  useEffect(() => {
+    if (tickets.length > 0) {
+      const metricasSemanalesCalculadas = calcularMetricasSemanales(tickets, filters.mes);
+      setMetricasSemanales(metricasSemanalesCalculadas);
+    }
+  }, [filters.mes, tickets]);
+
+  // Asegurar que la semana seleccionada exista para el mes actual
+  useEffect(() => {
+    if (filters.semana !== 'todas') {
+      const num = parseInt(filters.semana.replace('semana', ''));
+      if (Number.isFinite(num) && num > semanasFijas.length) {
+        setFilters((prev) => ({ ...prev, semana: 'todas' }));
+      }
+    }
+  }, [filters.mes, semanasFijas.length, filters.semana]);
 
 
   // Función para búsqueda parcial como Excel
@@ -655,14 +677,15 @@ function MetricasEncargados() {
     return !filters.tech || buscarTecnico(encargado, filters.tech);
   });
 
-  // Filtrar métricas semanales por técnico seleccionado y ordenar por nota de semana 1
+  // Filtrar métricas semanales por técnico seleccionado y ordenar por nota de semana seleccionada
   const filteredMetricasSemanales = metricasSemanales
     .filter(encargado => {
       return !filters.tech || buscarTecnico(encargado, filters.tech);
     })
     .sort((a, b) => {
-      const notaA = parseFloat(a.semanas.semana1.nota) || 0;
-      const notaB = parseFloat(b.semanas.semana1.nota) || 0;
+      const semanaSeleccionada = (filters.semana === 'todas' || !filters.semana) ? 'semana1' : filters.semana;
+      const notaA = parseFloat(a.semanas[semanaSeleccionada]?.nota) || 0;
+      const notaB = parseFloat(b.semanas[semanaSeleccionada]?.nota) || 0;
       return notaB - notaA; // Orden descendente (mayor a menor)
     });
 
@@ -693,7 +716,7 @@ function MetricasEncargados() {
   return (
     <div className="metricas-encargados">
       <Typography variant="h4" component="h1" gutterBottom>
-        Métricas de Encargados Técnicos - Supervisor: Otto Hernandez
+        Métricas de Encargados Técnicos
       </Typography>
       
       {filters.tech && (
@@ -711,9 +734,40 @@ function MetricasEncargados() {
           placeholder="Escriba parte del nombre, teléfono o use * como comodín"
           helperText="Busca en nombres completos."
         />
+        <TextField
+          select
+          label="Filtrar por mes"
+          value={filters.mes}
+          onChange={(e) => setFilters({ ...filters, mes: e.target.value })}
+          style={{ minWidth: '200px' }}
+          SelectProps={{
+            native: true,
+          }}
+        >
+          <option value="2025-10">Octubre 2025</option>
+          <option value="2025-09">Septiembre 2025</option>
+          <option value="2025-08">Agosto 2025</option>
+        </TextField>
+        <TextField
+          select
+          label="Filtrar por semana"
+          value={filters.semana}
+          onChange={(e) => setFilters({ ...filters, semana: e.target.value })}
+          style={{ minWidth: '200px' }}
+          SelectProps={{
+            native: true,
+          }}
+        >
+          <option value="todas">Todas las semanas</option>
+          {semanasFijas.map((s, idx) => (
+            <option key={`semana-opt-${idx + 1}`} value={`semana${idx + 1}`}>
+              {`Semana ${idx + 1}: ${formatearFechaCorta(s.inicio)} - ${formatearFechaCorta(s.fin)}`}
+            </option>
+          ))}
+        </TextField>
         <Button 
           variant="outlined" 
-          onClick={() => setFilters({ ...filters, tech: '' })}
+          onClick={() => setFilters({ tech: '', semana: 'todas', mes: '2025-10' })}
           style={{ minWidth: '120px' }}
         >
           Mostrar Todos
@@ -724,109 +778,70 @@ function MetricasEncargados() {
       <Card style={{ marginBottom: '20px' }}>
         <CardContent>
           <Typography variant="h5" component="h2" gutterBottom style={{ textAlign: 'center', fontWeight: 'bold' }}>
-            NOTA DE LA SEMANA
+            {filters.semana === 'todas' ? 'NOTA DE LA SEMANA' : `NOTA DE LA ${filters.semana.toUpperCase().replace('SEMANA', 'SEMANA ')}`}
           </Typography>
           <TableContainer component={Paper}>
             <Table>
               <TableHead>
                 <TableRow style={{ backgroundColor: '#000', color: '#fff' }}>
-                  <TableCell style={{ color: '#fff' }}><strong>Nombre</strong></TableCell>
-                  <TableCell align="center" style={{ color: '#fff' }}><strong>Tiquetes Asignados</strong></TableCell>
-                  <TableCell align="center" style={{ color: '#fff' }}><strong>Tickets Resueltos</strong></TableCell>
-                  <TableCell align="center" style={{ color: '#fff' }}><strong>Encuestas Respondidas</strong></TableCell>
-                  <TableCell align="center" style={{ color: '#fff' }}><strong>Promedio Diario</strong></TableCell>
-                  <TableCell align="center" style={{ color: '#fff' }} colSpan={2}><strong>Semana 5</strong></TableCell>
-                  <TableCell align="center" style={{ color: '#fff' }} colSpan={2}><strong>Semana 4</strong></TableCell>
-                  <TableCell align="center" style={{ color: '#fff' }} colSpan={2}><strong>Semana 3</strong></TableCell>
-                  <TableCell align="center" style={{ color: '#fff' }} colSpan={2}><strong>Semana 2</strong></TableCell>
-                  <TableCell align="center" style={{ color: '#fff' }} colSpan={2}><strong>Semana 1</strong></TableCell>
+                  <TableCell style={{ color: '#fff', border: '1px solid #ddd' }}><strong>Nombre</strong></TableCell>
+                  <TableCell align="center" style={{ color: '#fff', border: '1px solid #ddd' }}><strong>Tiquetes Asignados</strong></TableCell>
+                  <TableCell align="center" style={{ color: '#fff', border: '1px solid #ddd' }}><strong>Tickets Resueltos</strong></TableCell>
+                  <TableCell align="center" style={{ color: '#fff', border: '1px solid #ddd' }}><strong>Encuestas Respondidas</strong></TableCell>
+                  <TableCell align="center" style={{ color: '#fff', border: '1px solid #ddd' }}><strong>Promedio Diario</strong></TableCell>
+                  {semanasFijas
+                    .map((s, idx) => ({ s, idx }))
+                    .reverse()
+                    .map(({ s, idx }) => (
+                      <TableCell key={`hdr-w-${idx}`} align="center" style={{ color: '#fff', border: '1px solid #ddd' }} colSpan={2}>
+                        <strong>{`Semana ${idx + 1} (${formatearFechaCorta(s.inicio)} - ${formatearFechaCorta(s.fin)})`}</strong>
+                      </TableCell>
+                    ))}
                 </TableRow>
                 <TableRow>
-                  <TableCell></TableCell>
-                  <TableCell></TableCell>
-                  <TableCell></TableCell>
-                  <TableCell></TableCell>
-                  <TableCell></TableCell>
-                  <TableCell align="center"><strong>Nota S5</strong></TableCell>
-                  <TableCell align="center"><strong>Encuestado S5</strong></TableCell>
-                  <TableCell align="center"><strong>Nota S4</strong></TableCell>
-                  <TableCell align="center"><strong>Encuestado S4</strong></TableCell>
-                  <TableCell align="center"><strong>Nota S3</strong></TableCell>
-                  <TableCell align="center"><strong>Encuestado S3</strong></TableCell>
-                  <TableCell align="center"><strong>Nota S2</strong></TableCell>
-                  <TableCell align="center"><strong>Encuestado S2</strong></TableCell>
-                  <TableCell align="center"><strong>Nota S1</strong></TableCell>
-                  <TableCell align="center"><strong>Encuestado S1</strong></TableCell>
+                  <TableCell style={{ border: '1px solid #ddd' }}></TableCell>
+                  <TableCell style={{ border: '1px solid #ddd' }}></TableCell>
+                  <TableCell style={{ border: '1px solid #ddd' }}></TableCell>
+                  <TableCell style={{ border: '1px solid #ddd' }}></TableCell>
+                  <TableCell style={{ border: '1px solid #ddd' }}></TableCell>
+                  {semanasFijas
+                    .map((_, idx) => idx + 1)
+                    .reverse()
+                    .map((num) => (
+                      <React.Fragment key={`subhdr-${num}`}>
+                        <TableCell align="center" style={{ border: '1px solid #ddd' }}><strong>{`Nota S${num}`}</strong></TableCell>
+                        <TableCell align="center" style={{ border: '1px solid #ddd' }}><strong>{`Encuestado S${num}`}</strong></TableCell>
+                      </React.Fragment>
+                    ))}
                 </TableRow>
               </TableHead>
               <TableBody>
                 {filteredMetricasSemanales.map((encargado, index) => (
                   <TableRow key={index}>
-                    <TableCell style={{ fontWeight: 'bold' }}>{encargado.nombre}</TableCell>
-                    <TableCell align="center">{encargado.tiquetesAsignados}</TableCell>
-                    <TableCell align="center">{encargado.tiquetesResueltos}</TableCell>
-                    <TableCell align="center">{encargado.encuestasRespondidas}</TableCell>
-                    <TableCell align="center">{encargado.promedioDiario}</TableCell>
-                    <TableCell align="center" style={{ 
-                      color: parseFloat(encargado.semanas.semana5.nota) >= 4.5 ? 'green' : 'red',
-                      fontWeight: 'bold'
-                    }}>
-                      {encargado.semanas.semana5.nota}
-                    </TableCell>
-                    <TableCell align="center" style={{ 
-                      color: parseFloat(encargado.semanas.semana5.encuestado) >= 80 ? 'green' : 'red',
-                      fontWeight: 'bold'
-                    }}>
-                      {encargado.semanas.semana5.encuestado}%
-                    </TableCell>
-                    <TableCell align="center" style={{ 
-                      color: parseFloat(encargado.semanas.semana4.nota) >= 4.5 ? 'green' : 'red',
-                      fontWeight: 'bold'
-                    }}>
-                      {encargado.semanas.semana4.nota}
-                    </TableCell>
-                    <TableCell align="center" style={{ 
-                      color: parseFloat(encargado.semanas.semana4.encuestado) >= 80 ? 'green' : 'red',
-                      fontWeight: 'bold'
-                    }}>
-                      {encargado.semanas.semana4.encuestado}%
-                    </TableCell>
-                    <TableCell align="center" style={{ 
-                      color: parseFloat(encargado.semanas.semana3.nota) >= 4.5 ? 'green' : 'red',
-                      fontWeight: 'bold'
-                    }}>
-                      {encargado.semanas.semana3.nota}
-                    </TableCell>
-                    <TableCell align="center" style={{ 
-                      color: parseFloat(encargado.semanas.semana3.encuestado) >= 80 ? 'green' : 'red',
-                      fontWeight: 'bold'
-                    }}>
-                      {encargado.semanas.semana3.encuestado}%
-                    </TableCell>
-                    <TableCell align="center" style={{ 
-                      color: parseFloat(encargado.semanas.semana2.nota) >= 4.5 ? 'green' : 'red',
-                      fontWeight: 'bold'
-                    }}>
-                      {encargado.semanas.semana2.nota}
-                    </TableCell>
-                    <TableCell align="center" style={{ 
-                      color: parseFloat(encargado.semanas.semana2.encuestado) >= 80 ? 'green' : 'red',
-                      fontWeight: 'bold'
-                    }}>
-                      {encargado.semanas.semana2.encuestado}%
-                    </TableCell>
-                    <TableCell align="center" style={{ 
-                      color: parseFloat(encargado.semanas.semana1.nota) >= 4.5 ? 'green' : 'red',
-                      fontWeight: 'bold'
-                    }}>
-                      {encargado.semanas.semana1.nota}
-                    </TableCell>
-                    <TableCell align="center" style={{ 
-                      color: parseFloat(encargado.semanas.semana1.encuestado) >= 80 ? 'green' : 'red',
-                      fontWeight: 'bold'
-                    }}>
-                      {encargado.semanas.semana1.encuestado}%
-                    </TableCell>
+                    <TableCell style={{ fontWeight: 'bold', border: '1px solid #ddd' }}>{encargado.nombre}</TableCell>
+                    <TableCell align="center" style={{ border: '1px solid #ddd' }}>{encargado.tiquetesAsignados}</TableCell>
+                    <TableCell align="center" style={{ border: '1px solid #ddd' }}>{encargado.tiquetesResueltos}</TableCell>
+                    <TableCell align="center" style={{ border: '1px solid #ddd' }}>{encargado.encuestasRespondidas}</TableCell>
+                    <TableCell align="center" style={{ border: '1px solid #ddd' }}>{encargado.promedioDiario}</TableCell>
+                    {semanasFijas
+                      .map((_, idx) => idx + 1)
+                      .reverse()
+                      .map((num) => {
+                        const sKey = `semana${num}`;
+                        const sData = encargado.semanas[sKey];
+                        const notaColor = sData ? (parseFloat(sData.nota) >= 4.5 ? 'green' : 'red') : 'gray';
+                        const encColor = sData ? (parseFloat(sData.encuestado) >= 80 ? 'green' : 'red') : 'gray';
+                        return (
+                          <React.Fragment key={`row-${index}-${num}`}>
+                            <TableCell align="center" style={{ color: notaColor, fontWeight: 'bold', border: '1px solid #ddd' }}>
+                              {sData ? sData.nota : 'N/A'}
+                            </TableCell>
+                            <TableCell align="center" style={{ color: encColor, fontWeight: 'bold', border: '1px solid #ddd' }}>
+                              {sData ? `${sData.encuestado}%` : 'N/A'}
+                            </TableCell>
+                          </React.Fragment>
+                        );
+                      })}
                   </TableRow>
                 ))}
               </TableBody>
@@ -845,14 +860,14 @@ function MetricasEncargados() {
             <Table>
               <TableHead>
                 <TableRow style={{ backgroundColor: '#000', color: '#fff' }}>
-                  <TableCell style={{ color: '#fff', fontWeight: 'bold' }}>Nombre</TableCell>
-                  <TableCell align="center" style={{ color: '#fff', fontWeight: 'bold' }}>Tiquetes Asignados</TableCell>
-                  <TableCell align="center" style={{ color: '#fff', fontWeight: 'bold' }}>Tiquetes Resueltos</TableCell>
-                  <TableCell align="center" style={{ color: '#fff', fontWeight: 'bold' }}>Encuestas Respondidas</TableCell>
-                  <TableCell align="center" style={{ color: '#fff', fontWeight: 'bold' }}>Promedio Diario</TableCell>
-                  <TableCell align="center" colSpan={2} style={{ color: '#fff', fontWeight: 'bold' }}>Octubre</TableCell>
-                  <TableCell align="center" colSpan={2} style={{ color: '#fff', fontWeight: 'bold' }}>Septiembre</TableCell>
-                  <TableCell align="center" colSpan={2} style={{ color: '#fff', fontWeight: 'bold' }}>Agosto</TableCell>
+                  <TableCell style={{ color: '#fff', fontWeight: 'bold', border: '1px solid #ddd' }}>Nombre</TableCell>
+                  <TableCell align="center" style={{ color: '#fff', fontWeight: 'bold', border: '1px solid #ddd' }}>Tiquetes Asignados</TableCell>
+                  <TableCell align="center" style={{ color: '#fff', fontWeight: 'bold', border: '1px solid #ddd' }}>Tiquetes Resueltos</TableCell>
+                  <TableCell align="center" style={{ color: '#fff', fontWeight: 'bold', border: '1px solid #ddd' }}>Encuestas Respondidas</TableCell>
+                  <TableCell align="center" style={{ color: '#fff', fontWeight: 'bold', border: '1px solid #ddd' }}>Promedio Diario</TableCell>
+                  <TableCell align="center" colSpan={2} style={{ color: '#fff', fontWeight: 'bold', border: '1px solid #ddd' }}>Octubre</TableCell>
+                  <TableCell align="center" colSpan={2} style={{ color: '#fff', fontWeight: 'bold', border: '1px solid #ddd' }}>Septiembre</TableCell>
+                  <TableCell align="center" colSpan={2} style={{ color: '#fff', fontWeight: 'bold', border: '1px solid #ddd' }}>Agosto</TableCell>
                 </TableRow>
                 <TableRow style={{ backgroundColor: '#f5f5f5' }}>
                   <TableCell></TableCell>
@@ -860,18 +875,18 @@ function MetricasEncargados() {
                   <TableCell></TableCell>
                   <TableCell></TableCell>
                   <TableCell></TableCell>
-                  <TableCell align="center" style={{ fontWeight: 'bold' }}>Nota</TableCell>
-                  <TableCell align="center" style={{ fontWeight: 'bold' }}>Encuestado</TableCell>
-                  <TableCell align="center" style={{ fontWeight: 'bold' }}>Nota</TableCell>
-                  <TableCell align="center" style={{ fontWeight: 'bold' }}>Encuestado</TableCell>
-                  <TableCell align="center" style={{ fontWeight: 'bold' }}>Nota</TableCell>
-                  <TableCell align="center" style={{ fontWeight: 'bold' }}>Encuestado</TableCell>
+                  <TableCell align="center" style={{ fontWeight: 'bold', border: '1px solid #ddd' }}>Nota</TableCell>
+                  <TableCell align="center" style={{ fontWeight: 'bold', border: '1px solid #ddd' }}>Encuestado</TableCell>
+                  <TableCell align="center" style={{ fontWeight: 'bold', border: '1px solid #ddd' }}>Nota</TableCell>
+                  <TableCell align="center" style={{ fontWeight: 'bold', border: '1px solid #ddd' }}>Encuestado</TableCell>
+                  <TableCell align="center" style={{ fontWeight: 'bold', border: '1px solid #ddd' }}>Nota</TableCell>
+                  <TableCell align="center" style={{ fontWeight: 'bold', border: '1px solid #ddd' }}>Encuestado</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {filteredMetricasMensuales.map((encargado, index) => (
                   <TableRow key={index} style={{ backgroundColor: index % 2 === 0 ? '#fff' : '#f9f9f9' }}>
-                    <TableCell style={{ fontWeight: 'bold' }}>{encargado.nombre}</TableCell>
+                    <TableCell style={{ fontWeight: 'bold', border: '1px solid #ddd' }}>{encargado.nombre}</TableCell>
                     <TableCell align="center">{encargado.tiquetesAsignados}</TableCell>
                     <TableCell align="center">{encargado.tiquetesResueltos}</TableCell>
                     <TableCell align="center">{encargado.encuestasRespondidas}</TableCell>
@@ -932,15 +947,15 @@ function MetricasEncargados() {
               <Table>
                 <TableHead>
                   <TableRow style={{ backgroundColor: '#000', color: '#fff' }}>
-                    <TableCell style={{ color: '#fff', fontWeight: 'bold' }}>Nombre</TableCell>
-                    <TableCell align="center" style={{ color: '#fff', fontWeight: 'bold' }}>SLA Ideal (70%)</TableCell>
-                    <TableCell align="center" style={{ color: '#fff', fontWeight: 'bold' }}>Participación Actual (70%)</TableCell>
+                    <TableCell style={{ color: '#fff', fontWeight: 'bold', border: '1px solid #ddd' }}>Nombre</TableCell>
+                    <TableCell align="center" style={{ color: '#fff', fontWeight: 'bold', border: '1px solid #ddd' }}>SLA Ideal (70%)</TableCell>
+                    <TableCell align="center" style={{ color: '#fff', fontWeight: 'bold', border: '1px solid #ddd' }}>Participación Actual (70%)</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {filteredMetricasSLA.map((encargado, index) => (
                     <TableRow key={index} style={{ backgroundColor: index % 2 === 0 ? '#fff' : '#f9f9f9' }}>
-                      <TableCell style={{ fontWeight: 'bold' }}>{encargado.nombre}</TableCell>
+                      <TableCell style={{ fontWeight: 'bold', border: '1px solid #ddd' }}>{encargado.nombre}</TableCell>
                       <TableCell align="center" style={{ 
                         color: parseFloat(encargado.slaIdeal) >= 70 ? 'green' : 'red',
                         fontWeight: 'bold'
@@ -971,13 +986,13 @@ function MetricasEncargados() {
               <Table>
                 <TableHead>
                   <TableRow style={{ backgroundColor: '#000', color: '#fff' }}>
-                    <TableCell style={{ color: '#fff', fontWeight: 'bold' }}>Métrica</TableCell>
-                    <TableCell align="center" style={{ color: '#fff', fontWeight: 'bold' }}>Valor</TableCell>
+                    <TableCell style={{ color: '#fff', fontWeight: 'bold', border: '1px solid #ddd' }}>Métrica</TableCell>
+                    <TableCell align="center" style={{ color: '#fff', fontWeight: 'bold', border: '1px solid #ddd' }}>Valor</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   <TableRow style={{ backgroundColor: '#f9f9f9' }}>
-                    <TableCell style={{ fontWeight: 'bold' }}>Tiquetes asignados en promedio</TableCell>
+                    <TableCell style={{ fontWeight: 'bold', border: '1px solid #ddd' }}>Tiquetes asignados en promedio</TableCell>
                     <TableCell align="center" style={{ 
                       fontWeight: 'bold'
                     }}>
@@ -985,7 +1000,7 @@ function MetricasEncargados() {
                     </TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell style={{ fontWeight: 'bold' }}>Nota</TableCell>
+                    <TableCell style={{ fontWeight: 'bold', border: '1px solid #ddd' }}>Nota</TableCell>
                     <TableCell align="center" style={{ 
                       color: parseFloat(promediosGenerales.notaPromedio) >= 4.5 ? 'green' : 'red',
                       fontWeight: 'bold'
@@ -994,7 +1009,7 @@ function MetricasEncargados() {
                     </TableCell>
                   </TableRow>
                   <TableRow style={{ backgroundColor: '#f9f9f9' }}>
-                    <TableCell style={{ fontWeight: 'bold' }}>SLA Ideal (70%)</TableCell>
+                    <TableCell style={{ fontWeight: 'bold', border: '1px solid #ddd' }}>SLA Ideal (70%)</TableCell>
                     <TableCell align="center" style={{ 
                       color: parseFloat(promediosGenerales.slaIdealPromedio) >= 70 ? 'green' : 'red',
                       fontWeight: 'bold'
@@ -1003,7 +1018,7 @@ function MetricasEncargados() {
                     </TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell style={{ fontWeight: 'bold' }}>Participación Actual (70%)</TableCell>
+                    <TableCell style={{ fontWeight: 'bold', border: '1px solid #ddd' }}>Participación Actual (70%)</TableCell>
                     <TableCell align="center" style={{ 
                       color: parseFloat(promediosGenerales.participacionActualPromedio) >= 70 ? 'green' : 'red',
                       fontWeight: 'bold'
@@ -1023,39 +1038,54 @@ function MetricasEncargados() {
         {/* Gráfica de Tickets */}
         <Card style={{ flex: 1 }}>
           <CardContent>
-            <Typography variant="h6" component="h3" gutterBottom style={{ textAlign: 'center', fontWeight: 'bold' }}>
+            <Typography variant="h6" component="h3" gutterBottom style={{ textAlign: 'center', fontWeight: 'bold', marginBottom: '20px' }}>
               Tiquetes
             </Typography>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={datosGraficas.datosTiquetes}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={120}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {datosGraficas.datosTiquetes.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+            <div style={{ position: 'relative', textAlign: 'center' }}>
+              <ResponsiveContainer width="100%" height={350}>
+                <PieChart>
+                  <Pie
+                    data={datosGraficas.datosTiquetes}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={120}
+                    paddingAngle={5}
+                    dataKey="value"
+                    label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
+                    labelLine={true}
+                  >
+                    {datosGraficas.datosTiquetes.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value, name) => [`${value}`, name]} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+              <div style={{ 
+                position: 'absolute', 
+                top: '50%', 
+                left: '50%', 
+                transform: 'translate(-50%, -50%)',
+                fontSize: '24px',
+                fontWeight: 'bold',
+                color: '#000'
+              }}>
+                {datosGraficas.porcentajeResueltos}%
+              </div>
+            </div>
           </CardContent>
         </Card>
 
         {/* Gráfica de Tiquetes Encuestados */}
         <Card style={{ flex: 1 }}>
           <CardContent>
-            <Typography variant="h6" component="h3" gutterBottom style={{ textAlign: 'center', fontWeight: 'bold' }}>
+            <Typography variant="h6" component="h3" gutterBottom style={{ textAlign: 'center', fontWeight: 'bold', marginBottom: '20px' }}>
               Tiquetes encuestados
             </Typography>
             <div style={{ position: 'relative', textAlign: 'center' }}>
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={350}>
                 <PieChart>
                   <Pie
                     data={datosGraficas.datosEncuestados}
@@ -1065,11 +1095,14 @@ function MetricasEncargados() {
                     outerRadius={120}
                     paddingAngle={5}
                     dataKey="value"
+                    label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
+                    labelLine={true}
                   >
                     {datosGraficas.datosEncuestados.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
+                  <Tooltip formatter={(value, name) => [`${value}`, name]} />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>

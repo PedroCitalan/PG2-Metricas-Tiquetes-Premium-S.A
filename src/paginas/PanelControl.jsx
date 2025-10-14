@@ -51,7 +51,7 @@ const filtrarTicketsEncargados = (tickets) => {
 
 function PanelControl() {
   const [tickets, setTickets] = useState([]);
-  const [filters, setFilters] = useState({ status: '', tech: '', techSearch: '' });
+  const [filters, setFilters] = useState({ status: '', tech: '', techSearch: '', mes: '' });
 
   useEffect(() => {
     const fetchData = () => {
@@ -120,27 +120,49 @@ function PanelControl() {
   }
 
   const filteredTickets = ticketsEncargados.filter(ticket => {
+    const fechaTicket = new Date(ticket.Date);
+    const mesTicket = fechaTicket.getMonth() + 1;
+    const añoTicket = fechaTicket.getFullYear();
+    
+    // Filtro por mes
+    let matchMes = true;
+    if (filters.mes) {
+      const [año, mes] = filters.mes.split('-');
+      matchMes = añoTicket === parseInt(año) && mesTicket === parseInt(mes);
+    }
+    
     return (
       (!filters.status || ticket.Status === filters.status) &&
       (!filters.tech || ticket.Tech === filters.tech) &&
-      (!filters.techSearch || buscarTecnico(ticket, filters.techSearch))
+      (!filters.techSearch || buscarTecnico(ticket, filters.techSearch)) &&
+      matchMes
     );
   });
 
   const metrics = getMetrics();
 
+  // Calcular métricas filtradas
+  const filteredMetrics = {
+    totalTickets: filteredTickets.length,
+    totalOpen: filteredTickets.filter(ticket => ticket.Status === 'Abierto').length,
+    totalClosed: filteredTickets.filter(ticket => ticket.Status === 'Cerrado' || ticket.Status === 'Resuelto').length,
+    totalPending: filteredTickets.filter(ticket => !["Abierto", "Cerrado", "Resuelto", "Cancelado"].includes(ticket.Status)).length,
+    totalCanceled: filteredTickets.filter(ticket => ticket.Status === 'Cancelado').length,
+  };
+
   const chartData = [
-    { name: 'Tiquetes: ' + metrics.totalTickets, value: metrics.totalTickets }
+    { name: 'Tiquetes: ' + filteredMetrics.totalTickets, value: filteredMetrics.totalTickets }
   ];
 
   const barChartData = [
-    { name: '(1) Cerrados', Cantidad: metrics.totalClosed, fill: "#40A315" },
-    { name: '(2) Pendientes', Cantidad: metrics.totalPending },
-    { name: '(3) Cancelados', Cantidad: metrics.totalCanceled, fill: "#FFC300" },
+    { name: '(1) Cerrados', Cantidad: filteredMetrics.totalClosed, fill: "#40A315" },
+    { name: '(2) Pendientes', Cantidad: filteredMetrics.totalPending },
+    { name: '(3) Cancelados', Cantidad: filteredMetrics.totalCanceled, fill: "#FFC300" },
   ].sort((b, a) => b.name.localeCompare(a.name));
 
-  const ticketsByMonth = ticketsEncargados.reduce((acc, ticket) => {
-    const month = new Date(ticket.Date).toLocaleString('default', { month: 'short', year: 'numeric' }).toUpperCase();
+  const ticketsByMonth = filteredTickets.reduce((acc, ticket) => {
+    const fecha = new Date(ticket.Date);
+    const month = fecha.toLocaleString('default', { month: 'short', year: 'numeric' }).toUpperCase();
     if (!acc[month]) {
       acc[month] = 0;
     }
@@ -148,7 +170,21 @@ function PanelControl() {
     return acc;
   }, {});
 
-  const ticketsByWeek = ticketsEncargados.reduce((acc, ticket) => {
+  // Ordenar meses: 2024 primero, luego 2025
+  const monthlyData = Object.entries(ticketsByMonth)
+    .map(([key, value]) => ({
+      name: key,
+      Cantidad: value,
+      año: key.includes('2024') ? 2024 : 2025,
+      mes: key.split(' ')[0]
+    }))
+    .sort((a, b) => {
+      if (a.año !== b.año) return a.año - b.año; // 2024 primero
+      const meses = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+      return meses.indexOf(a.mes) - meses.indexOf(b.mes);
+    });
+
+  const ticketsByWeek = filteredTickets.reduce((acc, ticket) => {
     if (ticket.Date) {
       const date = new Date(ticket.Date);
       const week = Math.ceil(
@@ -165,7 +201,20 @@ function PanelControl() {
     return acc;
   }, {});
 
-  const ticketsByDaysOfWeek = ticketsEncargados.reduce((acc, ticket) => {
+  // Ordenar semanas: 2024 primero, luego 2025
+  const weeklyData = Object.entries(ticketsByWeek)
+    .map(([key, value]) => ({
+      name: key,
+      Cantidad: value,
+      año: key.includes('2024') ? 2024 : 2025,
+      semana: parseInt(key.split('S')[1])
+    }))
+    .sort((a, b) => {
+      if (a.año !== b.año) return a.año - b.año; // 2024 primero
+      return a.semana - b.semana;
+    });
+
+  const ticketsByDaysOfWeek = filteredTickets.reduce((acc, ticket) => {
     if (ticket.Date) {
       const day = new Date(ticket.Date).getDay();
       const daysMap = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
@@ -185,7 +234,16 @@ function PanelControl() {
     Cantidad: ticketsByDaysOfWeek[day] || 0,
   }));
 
-  const ticketsByMonthandStatus = ticketsEncargados.reduce((acc, ticket) => {
+  // Calcular colores dinámicos basados en valores
+  const maxCantidad = Math.max(...ticketsByDayData.map(d => d.Cantidad));
+  const ticketsByDayDataWithColors = ticketsByDayData.map(day => ({
+    ...day,
+    fill: day.Cantidad === 0 ? '#E0E0E0' : 
+          day.Cantidad === maxCantidad ? '#FF0000' : // Rojo más fuerte para el máximo
+          `hsl(0, ${Math.round((day.Cantidad / maxCantidad) * 100)}%, 50%)` // Escala de rojo
+  }));
+
+  const ticketsByMonthandStatus = filteredTickets.reduce((acc, ticket) => {
     if (ticket.Date && ticket.Status) {
       const month = new Date(ticket.Date).toLocaleString("es-ES", { month: "short" }).toUpperCase();
       const year = new Date(ticket.Date).getFullYear();
@@ -230,14 +288,6 @@ function PanelControl() {
   }));
 
   const COLORS = ['#0036FF', '#00C49F'];
-  const monthlyData = Object.entries(ticketsByMonth).map(([key, value]) => ({
-    name: key,
-    Cantidad: value,
-  }));
-  const weeklyData = Object.entries(ticketsByWeek).map(([key, value]) => ({
-    name: key,
-    Cantidad: value,
-  })).sort((a, b) => b.name.localeCompare(a.name));
 
   const StatusFilter = Array.from(
     new Set(
@@ -247,13 +297,23 @@ function PanelControl() {
     )
   );
 
-  const TechFilter = Array.from(
+  /*const TechFilter = Array.from(
     new Set(
       ticketsEncargados.map((ticket) => {
         return ticket.Tech;
       })
     )
-  );
+  );*/
+
+  // Generar opciones de meses disponibles
+  const mesesDisponibles = Array.from(
+    new Set(
+      ticketsEncargados.map(ticket => {
+        const fecha = new Date(ticket.Date);
+        return `${fecha.getFullYear()}-${(fecha.getMonth() + 1).toString().padStart(2, '0')}`;
+      })
+    )
+  ).sort();
 
   return (
     <div className="p-6 font-sans">
@@ -327,9 +387,32 @@ function PanelControl() {
 
       <div className="flex flex-row gap-6">
         <div className="flex-1">
-          <Typography variant="h6" component="div" gutterBottom>
-            Resumen de Tickets
-          </Typography>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <Typography variant="h6" component="div">
+              Resumen de Tickets
+            </Typography>
+            <FormControl style={{ minWidth: '150px' }}>
+              <InputLabel>Mes</InputLabel>
+              <Select
+                value={filters.mes}
+                onChange={(e) => setFilters({ ...filters, mes: e.target.value })}
+                label="Mes"
+                size="small"
+              >
+                <MenuItem value="">Todos</MenuItem>
+                {mesesDisponibles.map(mes => {
+                  const [año, mesNum] = mes.split('-');
+                  const fecha = new Date(parseInt(año), parseInt(mesNum) - 1);
+                  const nombreMes = fecha.toLocaleString('es-ES', { month: 'short', year: '2-digit' });
+                  return (
+                    <MenuItem key={mes} value={mes}>
+                      {nombreMes}
+                    </MenuItem>
+                  );
+                })}
+              </Select>
+            </FormControl>
+          </div>
           <PieChart width={400} height={300}>
             <Pie
               data={chartData}
@@ -345,14 +428,38 @@ function PanelControl() {
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>
+            <Tooltip />
             <Legend />
           </PieChart>
         </div>
 
         <div className="flex-1">
-          <Typography variant="h6" component="div" gutterBottom>
-            Tickets por Estado
-          </Typography>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <Typography variant="h6" component="div">
+              Tickets por Estado
+            </Typography>
+            <FormControl style={{ minWidth: '150px' }}>
+              <InputLabel>Mes</InputLabel>
+              <Select
+                value={filters.mes}
+                onChange={(e) => setFilters({ ...filters, mes: e.target.value })}
+                label="Mes"
+                size="small"
+              >
+                <MenuItem value="">Todos</MenuItem>
+                {mesesDisponibles.map(mes => {
+                  const [año, mesNum] = mes.split('-');
+                  const fecha = new Date(parseInt(año), parseInt(mesNum) - 1);
+                  const nombreMes = fecha.toLocaleString('es-ES', { month: 'short', year: '2-digit' });
+                  return (
+                    <MenuItem key={mes} value={mes}>
+                      {nombreMes}
+                    </MenuItem>
+                  );
+                })}
+              </Select>
+            </FormControl>
+          </div>
           <BarChart
             width={500}
             height={300}
@@ -363,7 +470,7 @@ function PanelControl() {
             <XAxis dataKey="name" />
             <YAxis />
             <Tooltip />
-            <Bar dataKey="Cantidad" fill="#FF0000" />
+            <Bar dataKey="Cantidad" fill="#FF0000" label={{ position: 'top', fill: '#000', fontSize: 12, fontWeight: 'bold' }} />
           </BarChart>
         </div>
       </div>
@@ -384,7 +491,7 @@ function PanelControl() {
                   <XAxis dataKey="name" />
                   <YAxis />
                   <Tooltip />
-                  <Bar dataKey="Cantidad" fill={data[0].fill} />
+                  <Bar dataKey="Cantidad" fill={data[0].fill} label={{ position: 'top', fill: '#000', fontSize: 10, fontWeight: 'bold' }} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -402,7 +509,7 @@ function PanelControl() {
               <XAxis dataKey="name" />
               <YAxis />
               <Tooltip />
-              <Line type="monotone" dataKey="Cantidad" stroke="#FF0000" dot={{ fill: "red", r: 5 }} />
+              <Line type="monotone" dataKey="Cantidad" stroke="#FF0000" dot={{ fill: "red", r: 5 }} label={{ position: 'top', fill: '#000', fontSize: 10, fontWeight: 'bold' }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -416,7 +523,7 @@ function PanelControl() {
               <XAxis dataKey="name" />
               <YAxis />
               <Tooltip />
-              <Line type="monotone" dataKey="Cantidad" stroke="#FF0000" dot={{ fill: "red", r: 5 }} />
+              <Line type="monotone" dataKey="Cantidad" stroke="#FF0000" dot={{ fill: "red", r: 5 }} label={{ position: 'top', fill: '#000', fontSize: 10, fontWeight: 'bold' }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -427,18 +534,22 @@ function PanelControl() {
             Tickets por Día de la Semana
           </Typography>
           <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={ticketsByDayData}>
+            <BarChart data={ticketsByDayDataWithColors}>
               <XAxis dataKey="name" />
               <YAxis />
               <Tooltip />
-              <Bar dataKey="Cantidad" fill="#FF0000" />
+              <Bar dataKey="Cantidad" fill="#FF0000" label={{ position: 'top', fill: '#000', fontSize: 12, fontWeight: 'bold' }}>
+                {ticketsByDayDataWithColors.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.fill} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
       <div className="grid mb-6">
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', marginBottom: '20px', flexWrap: 'wrap' }}>
           <TextField
             fullWidth
             label="Buscar técnico"
@@ -446,10 +557,13 @@ function PanelControl() {
             onChange={(e) => setFilters({ ...filters, techSearch: e.target.value })}
             placeholder="Escriba parte del nombre, teléfono o use * como comodín"
             helperText="Busca en nombres completos de encargados permitidos."
+            style={{ minWidth: '300px' }}
           />
+          
+          
           <Button 
             variant="outlined" 
-            onClick={() => setFilters({ ...filters, techSearch: '' })}
+            onClick={() => setFilters({ status: '', tech: '', techSearch: '', mes: '' })}
             style={{ minWidth: '120px' }}
           >
             Mostrar Todos
@@ -477,8 +591,8 @@ function PanelControl() {
             value={filters.tech}
             onChange={(e) => setFilters({ ...filters, tech: e.target.value })}
           >
-            <MenuItem value="">Ninguno</MenuItem>
-            {TechFilter.map((tech) => (
+            <MenuItem value="">Todos los técnicos</MenuItem>
+            {['Jose Castro [jose.castro]', 'José Morales [jose.morales]', 'Rolando Lopez [rolando.lopez]', 'Fernando Velasquez +50254892327 [fernando.velasquez]', 'Byron Borrayo +50254287799 [Byron.Borrayo]', 'Juan Jose Gomez +50242105695 [Juanj.gomez]', 'Saul Recinos [saul.recinos]'].map(tech => (
               <MenuItem key={tech} value={tech}>
                 {obtenerAlias(tech)}
               </MenuItem>
@@ -491,25 +605,25 @@ function PanelControl() {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Tipo de solicitud</TableCell>
-              <TableCell>Ubicación</TableCell>
-              <TableCell>No.</TableCell>
-              <TableCell>Técnico a cargo</TableCell>
-              <TableCell>Fecha</TableCell>
-              <TableCell>Estado</TableCell>
-              <TableCell>Asunto</TableCell>
+              <TableCell style={{ border: '1px solid #ddd' }}>Tipo de solicitud</TableCell>
+              <TableCell style={{ border: '1px solid #ddd' }}>Ubicación</TableCell>
+              <TableCell style={{ border: '1px solid #ddd' }}>No.</TableCell>
+              <TableCell style={{ border: '1px solid #ddd' }}>Técnico a cargo</TableCell>
+              <TableCell style={{ border: '1px solid #ddd' }}>Fecha</TableCell>
+              <TableCell style={{ border: '1px solid #ddd' }}>Estado</TableCell>
+              <TableCell style={{ border: '1px solid #ddd' }}>Asunto</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {filteredTickets.map((ticket, index) => (
               <TableRow key={index}>
-                <TableCell>{ticket['Request Type']}</TableCell>
-                <TableCell>{ticket.Location}</TableCell>
-                <TableCell>{ticket['No.']}</TableCell>
-                <TableCell style={{ fontWeight: 'bold' }}>{obtenerAlias(ticket.Tech)}</TableCell>
-                <TableCell>{ticket.Date}</TableCell>
-                <TableCell>{ticket.Status}</TableCell>
-                <TableCell>{ticket.Subject}</TableCell>
+                <TableCell style={{ border: '1px solid #ddd' }}>{ticket['Request Type']}</TableCell>
+                <TableCell style={{ border: '1px solid #ddd' }}>{ticket.Location}</TableCell>
+                <TableCell style={{ border: '1px solid #ddd' }}>{ticket['No.']}</TableCell>
+                <TableCell style={{ fontWeight: 'bold', border: '1px solid #ddd' }}>{obtenerAlias(ticket.Tech)}</TableCell>
+                <TableCell style={{ border: '1px solid #ddd' }}>{ticket.Date}</TableCell>
+                <TableCell style={{ border: '1px solid #ddd' }}>{ticket.Status}</TableCell>
+                <TableCell style={{ border: '1px solid #ddd' }}>{ticket.Subject}</TableCell>
               </TableRow>
             ))}
           </TableBody>

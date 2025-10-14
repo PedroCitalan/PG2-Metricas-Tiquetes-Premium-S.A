@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Box, TextField, Button, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Card, CardContent, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Box, Button, Dialog, DialogTitle, DialogContent, DialogActions, Select, MenuItem, FormControl, InputLabel, TextField } from '@mui/material';
 import '../Estilos/Proyectos.css';
 
 // Mapeo de alias para mostrar nombres de técnicos (igual que en MetricasEncargados)
@@ -75,52 +75,36 @@ const calcularDiasTranscurridos = (fechaApertura) => {
   return diasTranscurridos;
 };
 
-// Función para determinar el motivo de no resolución
+// Función para determinar el motivo de no resolución basado en el estado
 const determinarMotivoNoResolucion = (ticket) => {
-  const subject = (ticket.Subject || '').toLowerCase();
-  const requestDetail = (ticket['Request Detail'] || '').toLowerCase();
-  const notes = (ticket.Notes || '').toLowerCase();
-  const requestType = (ticket['Request Type'] || '').toLowerCase();
+  const status = ticket.Status;
   
-  const textoCompleto = `${subject} ${requestDetail} ${notes} ${requestType}`;
-  
-  // Palabras clave para diferentes motivos
-  if (textoCompleto.includes('compra') || textoCompleto.includes('purchase') || textoCompleto.includes('cotización') || textoCompleto.includes('presupuesto')) {
-    return 'Proceso de compra pendiente - Requiere aprobación presupuestaria';
+  // Motivos basados en el estado
+  switch (status) {
+    case 'Abierto':
+      return 'Ticket abierto - En espera de asignación o inicio de trabajo';
+    case 'En Progreso':
+      return 'Trabajo en progreso - Requiere tiempo adicional para completarse';
+    case 'Pendiente':
+      return 'Pendiente de información - Esperando respuesta del cliente';
+    case 'En Espera':
+      return 'En espera de recursos - Dependiente de hardware, software o permisos';
+    case 'Escalado':
+      return 'Escalado a nivel superior - Requiere intervención especializada';
+    case 'Revisión':
+      return 'En revisión - Pendiente de validación o aprobación';
+    case 'Bloqueado':
+      return 'Bloqueado por dependencias externas - Requiere resolución previa';
+    default:
+      return `Estado: ${status} - Requiere seguimiento adicional`;
   }
-  
-  if (textoCompleto.includes('hardware') || textoCompleto.includes('equipo') || textoCompleto.includes('dispositivo') || textoCompleto.includes('servidor')) {
-    return 'Esperando entrega de hardware - Dependiente de proveedor';
-  }
-  
-  if (textoCompleto.includes('software') || textoCompleto.includes('licencia') || textoCompleto.includes('instalación')) {
-    return 'Instalación de software pendiente - Requiere licencias o permisos';
-  }
-  
-  if (textoCompleto.includes('red') || textoCompleto.includes('conexión') || textoCompleto.includes('internet') || textoCompleto.includes('wifi')) {
-    return 'Problema de conectividad - Requiere intervención de red';
-  }
-  
-  if (textoCompleto.includes('usuario') || textoCompleto.includes('acceso') || textoCompleto.includes('permisos') || textoCompleto.includes('credenciales')) {
-    return 'Gestión de usuarios - Requiere configuración de permisos';
-  }
-  
-  if (textoCompleto.includes('cancelar') || textoCompleto.includes('cancel') || textoCompleto.includes('descartar')) {
-    return 'Ticket marcado para cancelación - Pendiente de confirmación';
-  }
-  
-  if (textoCompleto.includes('esperando') || textoCompleto.includes('waiting') || textoCompleto.includes('pendiente')) {
-    return 'Esperando respuesta del cliente - Información adicional requerida';
-  }
-  
-  // Motivo por defecto
-  return 'Análisis en progreso - Requiere investigación adicional';
 };
 
 const Proyectos = () => {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ tech: '' });
+  const [filters, setFilters] = useState({ tech: '', tienda: '', marca: '' });
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -147,39 +131,54 @@ const Proyectos = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Función para búsqueda parcial como Excel (igual que en MetricasEncargados)
-  const buscarTecnico = (ticket, busqueda) => {
-    if (!busqueda) return true;
+  // Filtrar tickets por técnico seleccionado (exact match)
+  const ticketsFiltrados = filtrarTicketsEncargados(tickets).filter(ticket => {
+    const matchTech = !filters.tech || ticket.Tech === filters.tech;
+    const matchTienda = !filters.tienda || (ticket.Location && ticket.Location.toLowerCase().includes(filters.tienda.toLowerCase()));
+    const matchMarca = !filters.marca || (ticket.Client && ticket.Client.toLowerCase().includes(filters.marca.toLowerCase()));
     
-    const tecnicoOriginal = ticket.Tech;
-    const aliasTecnico = obtenerAlias(tecnicoOriginal);
-    
-    // Convertir a minúsculas para búsqueda insensible a mayúsculas
-    const termino = busqueda.toLowerCase();
-    
-    // Si el término contiene asteriscos, tratarlo como comodín
-    if (termino.includes('*')) {
-      // Convertir patrón de Excel a regex
-      const patron = termino
-        .replace(/\*/g, '.*') // * se convierte en .* (cualquier carácter)
-        .replace(/\./g, '\\.'); // Escapar puntos literales
-      
-      const regex = new RegExp(`^${patron}$`, 'i');
-      return regex.test(tecnicoOriginal) || regex.test(aliasTecnico);
-    } else {
-      // Búsqueda parcial simple (contiene el término)
-      return tecnicoOriginal.toLowerCase().includes(termino) || 
-             aliasTecnico.toLowerCase().includes(termino);
+    return matchTech && matchTienda && matchMarca;
+  });
+
+  // Función para ordenar
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
     }
+    setSortConfig({ key, direction });
   };
 
-  // Filtrar tickets por técnico seleccionado
-  const ticketsFiltrados = filtrarTicketsEncargados(tickets).filter(ticket => {
-    return buscarTecnico(ticket, filters.tech);
+  // Aplicar ordenamiento
+  const sortedTickets = [...ticketsFiltrados].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+    
+    let aValue = a[sortConfig.key];
+    let bValue = b[sortConfig.key];
+    
+    // Manejar fechas
+    if (sortConfig.key === 'Date') {
+      aValue = new Date(aValue);
+      bValue = new Date(bValue);
+    }
+    
+    // Manejar números
+    if (sortConfig.key === 'No.') {
+      aValue = parseInt(aValue) || 0;
+      bValue = parseInt(bValue) || 0;
+    }
+    
+    if (aValue < bValue) {
+      return sortConfig.direction === 'asc' ? -1 : 1;
+    }
+    if (aValue > bValue) {
+      return sortConfig.direction === 'asc' ? 1 : -1;
+    }
+    return 0;
   });
 
   // Obtener top 10 tickets no resueltos
-  const top10TicketsNoResueltos = obtenerTop10TicketsNoResueltos(ticketsFiltrados);
+  const top10TicketsNoResueltos = obtenerTop10TicketsNoResueltos(sortedTickets);
 
   // Función para abrir el diálogo de detalles
   const handleTicketClick = (ticket) => {
@@ -215,17 +214,41 @@ const Proyectos = () => {
       
       {/* Filtro de Técnicos */}
       <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+        <FormControl style={{ minWidth: '200px' }}>
+          <InputLabel>Técnico</InputLabel>
+          <Select
+            value={filters.tech}
+            onChange={(e) => setFilters({ ...filters, tech: e.target.value })}
+            label="Técnico"
+          >
+            <MenuItem value="">Todos los técnicos</MenuItem>
+            {['Jose Castro [jose.castro]', 'Jos� Morales [jose.morales]', 'Rolando Lopez [rolando.lopez]', 'Fernando Velasquez +50254892327 [fernando.velasquez]', 'Byron Borrayo +50254287799 [Byron.Borrayo]', 'Juan Jose Gomez +50242105695 [Juanj.gomez]', 'Saul Recinos [saul.recinos]'].map(tech => (
+              <MenuItem key={tech} value={tech}>
+                {obtenerAlias(tech)}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        
         <TextField
-          fullWidth
-          label="Buscar técnico"
-          value={filters.tech}
-          onChange={(e) => setFilters({ ...filters, tech: e.target.value })}
-          placeholder="Escriba parte del nombre, teléfono o use * como comodín"
-          helperText="Busca en nombres completos."
+          label="Tienda"
+          value={filters.tienda}
+          onChange={(e) => setFilters({ ...filters, tienda: e.target.value })}
+          placeholder="Buscar por tienda"
+          style={{ minWidth: '150px' }}
         />
+        
+        <TextField
+          label="Marca"
+          value={filters.marca}
+          onChange={(e) => setFilters({ ...filters, marca: e.target.value })}
+          placeholder="Buscar por marca"
+          style={{ minWidth: '150px' }}
+        />
+        
         <Button 
           variant="outlined" 
-          onClick={() => setFilters({ ...filters, tech: '' })}
+          onClick={() => setFilters({ tech: '', tienda: '', marca: '' })}
           style={{ minWidth: '120px' }}
         >
           Mostrar Todos
@@ -245,14 +268,45 @@ const Proyectos = () => {
             <Table>
               <TableHead>
                 <TableRow style={{ backgroundColor: '#000', color: '#fff' }}>
-                  <TableCell style={{ color: '#fff', fontWeight: 'bold' }}>No.</TableCell>
-                  <TableCell style={{ color: '#fff', fontWeight: 'bold' }}>Fecha Apertura</TableCell>
-                  <TableCell style={{ color: '#fff', fontWeight: 'bold' }}>Días Abierto</TableCell>
-                  <TableCell style={{ color: '#fff', fontWeight: 'bold' }}>Estado</TableCell>
-                  <TableCell style={{ color: '#fff', fontWeight: 'bold' }}>Técnico</TableCell>
-                  <TableCell style={{ color: '#fff', fontWeight: 'bold' }}>Cliente</TableCell>
-                  <TableCell style={{ color: '#fff', fontWeight: 'bold' }}>Asunto</TableCell>
-                  <TableCell style={{ color: '#fff', fontWeight: 'bold' }}>Motivo No Resolución</TableCell>
+                  <TableCell 
+                    style={{ color: '#fff', fontWeight: 'bold', border: '1px solid #ddd', cursor: 'pointer' }}
+                    onClick={() => handleSort('No.')}
+                  >
+                    No. {sortConfig.key === 'No.' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                  </TableCell>
+                  <TableCell 
+                    style={{ color: '#fff', fontWeight: 'bold', border: '1px solid #ddd', cursor: 'pointer' }}
+                    onClick={() => handleSort('Date')}
+                  >
+                    Fecha Apertura {sortConfig.key === 'Date' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                  </TableCell>
+                  <TableCell style={{ color: '#fff', fontWeight: 'bold', border: '1px solid #ddd' }}>Días Abierto</TableCell>
+                  <TableCell 
+                    style={{ color: '#fff', fontWeight: 'bold', border: '1px solid #ddd', cursor: 'pointer' }}
+                    onClick={() => handleSort('Status')}
+                  >
+                    Estado {sortConfig.key === 'Status' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                  </TableCell>
+                  <TableCell 
+                    style={{ color: '#fff', fontWeight: 'bold', border: '1px solid #ddd', cursor: 'pointer' }}
+                    onClick={() => handleSort('Tech')}
+                  >
+                    Técnico {sortConfig.key === 'Tech' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                  </TableCell>
+                  <TableCell 
+                    style={{ color: '#fff', fontWeight: 'bold', border: '1px solid #ddd', cursor: 'pointer' }}
+                    onClick={() => handleSort('Client')}
+                  >
+                    Cliente {sortConfig.key === 'Client' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                  </TableCell>
+                  <TableCell style={{ color: '#fff', fontWeight: 'bold', border: '1px solid #ddd' }}>Request Type</TableCell>
+                  <TableCell 
+                    style={{ color: '#fff', fontWeight: 'bold', border: '1px solid #ddd', cursor: 'pointer' }}
+                    onClick={() => handleSort('Subject')}
+                  >
+                    Asunto {sortConfig.key === 'Subject' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                  </TableCell>
+                  <TableCell style={{ color: '#fff', fontWeight: 'bold', border: '1px solid #ddd' }}>Motivo No Resolución</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -271,21 +325,24 @@ const Proyectos = () => {
                       }}
                       onClick={() => handleTicketClick(ticket)}
                     >
-                      <TableCell style={{ fontWeight: 'bold' }}>{ticket['No.'] || index + 1}</TableCell>
-                      <TableCell>{new Date(ticket.Date).toLocaleDateString()}</TableCell>
+                      <TableCell style={{ fontWeight: 'bold', border: '1px solid #ddd' }}>{ticket['No.'] || index + 1}</TableCell>
+                      <TableCell style={{ border: '1px solid #ddd' }}>{new Date(ticket.Date).toLocaleDateString()}</TableCell>
                       <TableCell align="center" style={{ 
                         color: esUrgente ? 'red' : 'inherit',
-                        fontWeight: 'bold'
+                        fontWeight: 'bold',
+                        border: '1px solid #ddd'
                       }}>
                         {diasTranscurridos} días
                       </TableCell>
-                      <TableCell>{ticket.Status}</TableCell>
-                      <TableCell style={{ fontWeight: 'bold' }}>{aliasTecnico}</TableCell>
-                      <TableCell>{ticket.Client}</TableCell>
-                      <TableCell>{ticket.Subject}</TableCell>
+                      <TableCell style={{ border: '1px solid #ddd' }}>{ticket.Status}</TableCell>
+                      <TableCell style={{ fontWeight: 'bold', border: '1px solid #ddd' }}>{aliasTecnico}</TableCell>
+                      <TableCell style={{ border: '1px solid #ddd' }}>{ticket.Client}</TableCell>
+                      <TableCell style={{ border: '1px solid #ddd' }}>{ticket['Request Type'] || 'N/A'}</TableCell>
+                      <TableCell style={{ border: '1px solid #ddd' }}>{ticket.Subject}</TableCell>
                       <TableCell style={{ 
                         color: esUrgente ? 'red' : 'inherit',
-                        fontWeight: esUrgente ? 'bold' : 'normal'
+                        fontWeight: esUrgente ? 'bold' : 'normal',
+                        border: '1px solid #ddd'
                       }}>
                         {motivoNoResolucion}
                       </TableCell>
@@ -316,26 +373,26 @@ const Proyectos = () => {
                 <Typography variant="subtitle1" style={{ fontWeight: 'bold' }}>
                   Información General:
                 </Typography>
-                <Typography><strong>Cliente:</strong> {selectedTicket.Client}</Typography>
-                <Typography><strong>Técnico:</strong> {obtenerAlias(selectedTicket.Tech)}</Typography>
-                <Typography><strong>Estado:</strong> {selectedTicket.Status}</Typography>
-                <Typography><strong>Tipo de Solicitud:</strong> {selectedTicket['Request Type']}</Typography>
+                <Typography style={{ border: '1px solid #ddd', padding: '8px' }}><strong>Cliente:</strong> {selectedTicket.Client}</Typography>
+                <Typography style={{ border: '1px solid #ddd', padding: '8px' }}><strong>Técnico:</strong> {obtenerAlias(selectedTicket.Tech)}</Typography>
+                <Typography style={{ border: '1px solid #ddd', padding: '8px' }}><strong>Estado:</strong> {selectedTicket.Status}</Typography>
+                <Typography style={{ border: '1px solid #ddd', padding: '8px' }}><strong>Tipo de Solicitud:</strong> {selectedTicket['Request Type']}</Typography>
               </Box>
 
               <Box style={{ marginBottom: '20px' }}>
                 <Typography variant="subtitle1" style={{ fontWeight: 'bold' }}>
                   Fechas Importantes:
                 </Typography>
-                <Typography><strong>Fecha de Apertura:</strong> {new Date(selectedTicket.Date).toLocaleDateString()}</Typography>
-                <Typography><strong>Última Actualización:</strong> {new Date(selectedTicket.Updated).toLocaleDateString()}</Typography>
-                <Typography><strong>Días Transcurridos:</strong> {calcularDiasTranscurridos(selectedTicket.Date)} días</Typography>
+                <Typography style={{ border: '1px solid #ddd', padding: '8px' }}><strong>Fecha de Apertura:</strong> {new Date(selectedTicket.Date).toLocaleDateString()}</Typography>
+                <Typography style={{ border: '1px solid #ddd', padding: '8px' }}><strong>Última Actualización:</strong> {new Date(selectedTicket.Updated).toLocaleDateString()}</Typography>
+                <Typography style={{ border: '1px solid #ddd', padding: '8px' }}><strong>Días Transcurridos:</strong> {calcularDiasTranscurridos(selectedTicket.Date)} días</Typography>
               </Box>
 
               <Box style={{ marginBottom: '20px' }}>
                 <Typography variant="subtitle1" style={{ fontWeight: 'bold' }}>
                   Descripción del Problema:
                 </Typography>
-                <Typography style={{ whiteSpace: 'pre-wrap' }}>
+                <Typography style={{ whiteSpace: 'pre-wrap', border: '1px solid #ddd', padding: '8px' }}>
                   {selectedTicket['Request Detail'] || 'No hay descripción disponible'}
                 </Typography>
               </Box>
@@ -349,7 +406,8 @@ const Proyectos = () => {
                   fontWeight: 'bold',
                   backgroundColor: '#ffebee',
                   padding: '10px',
-                  borderRadius: '4px'
+                  borderRadius: '4px',
+                  border: '1px solid #ddd'
                 }}>
                   {determinarMotivoNoResolucion(selectedTicket)}
                 </Typography>
@@ -360,7 +418,7 @@ const Proyectos = () => {
                   <Typography variant="subtitle1" style={{ fontWeight: 'bold' }}>
                     Notas Adicionales:
                   </Typography>
-                  <Typography style={{ whiteSpace: 'pre-wrap' }}>
+                  <Typography style={{ whiteSpace: 'pre-wrap', border: '1px solid #ddd', padding: '8px' }}>
                     {selectedTicket.Notes}
                   </Typography>
                 </Box>
@@ -370,9 +428,9 @@ const Proyectos = () => {
                 <Typography variant="subtitle1" style={{ fontWeight: 'bold' }}>
                   Información Técnica:
                 </Typography>
-                <Typography><strong>Ubicación:</strong> {selectedTicket.Location || 'No especificada'}</Typography>
-                <Typography><strong>Grupo Técnico:</strong> {selectedTicket['Tech Group'] || 'No especificado'}</Typography>
-                <Typography><strong>Tiempo de Trabajo:</strong> {selectedTicket['Work Time'] || 'No registrado'}</Typography>
+                <Typography style={{ border: '1px solid #ddd', padding: '8px' }}><strong>Ubicación:</strong> {selectedTicket.Location || 'No especificada'}</Typography>
+                <Typography style={{ border: '1px solid #ddd', padding: '8px' }}><strong>Grupo Técnico:</strong> {selectedTicket['Tech Group'] || 'No especificado'}</Typography>
+                <Typography style={{ border: '1px solid #ddd', padding: '8px' }}><strong>Tiempo de Trabajo:</strong> {selectedTicket['Work Time'] || 'No registrado'}</Typography>
               </Box>
             </Box>
           )}
