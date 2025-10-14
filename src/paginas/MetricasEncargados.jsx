@@ -488,7 +488,7 @@ const calcularMetricasSLA = (tickets) => {
     // SLA ideal (70%): Tiquetes asignados / 372
     encargado.slaIdeal = ((encargado.tiquetesAsignadosOctubre / 372) * 100).toFixed(2);
     
-    // Participación actual (70%): Tiquetes asignados / (total octubre / 7)
+    // Participación actual (75%): Tiquetes asignados / (total octubre / 7)
     encargado.participacionActual = ((encargado.tiquetesAsignadosOctubre / promedioIdeal) * 100).toFixed(2);
   });
 
@@ -549,7 +549,7 @@ const calcularDatosGraficas = (metricasMensuales) => {
   }
 
   // Calcular totales
-  const totalTiquetesAsignados = metricasMensuales.reduce((sum, encargado) => sum + encargado.tiquetesAsignados, 0);
+  const totalTiquetesAsignados = metricasMensuales.reduce((sum, encargado) => sum + encargado.tiquetesAsignadosOctubre, 0);
   const totalTiquetesResueltos = metricasMensuales.reduce((sum, encargado) => sum + encargado.tiquetesResueltos, 0);
   const totalEncuestasRespondidas = metricasMensuales.reduce((sum, encargado) => sum + encargado.encuestasRespondidas, 0);
 
@@ -829,7 +829,7 @@ function MetricasEncargados() {
                       .map((num) => {
                         const sKey = `semana${num}`;
                         const sData = encargado.semanas[sKey];
-                        const notaColor = sData ? (parseFloat(sData.nota) >= 4.5 ? 'green' : 'red') : 'gray';
+                        const notaColor = sData ? (parseFloat(sData.nota) >= 4.6 ? 'green' : 'red') : 'gray';
                         const encColor = sData ? (parseFloat(sData.encuestado) >= 80 ? 'green' : 'red') : 'gray';
                         return (
                           <React.Fragment key={`row-${index}-${num}`}>
@@ -892,7 +892,7 @@ function MetricasEncargados() {
                     <TableCell align="center">{encargado.encuestasRespondidas}</TableCell>
                     <TableCell align="center">{encargado.promedioDiario}</TableCell>
                     <TableCell align="center" style={{ 
-                      color: parseFloat(encargado.meses.octubre.nota) >= 4.5 ? 'green' : 'red',
+                      color: parseFloat(encargado.meses.octubre.nota) >= 4.6 ? 'green' : 'red',
                       fontWeight: 'bold'
                     }}>
                       {encargado.meses.octubre.nota}
@@ -904,7 +904,7 @@ function MetricasEncargados() {
                       {encargado.meses.octubre.encuestado}%
                     </TableCell>
                     <TableCell align="center" style={{ 
-                      color: parseFloat(encargado.meses.septiembre.nota) >= 4.5 ? 'green' : 'red',
+                      color: parseFloat(encargado.meses.septiembre.nota) >= 4.6 ? 'green' : 'red',
                       fontWeight: 'bold'
                     }}>
                       {encargado.meses.septiembre.nota}
@@ -916,7 +916,7 @@ function MetricasEncargados() {
                       {encargado.meses.septiembre.encuestado}%
                     </TableCell>
                     <TableCell align="center" style={{ 
-                      color: parseFloat(encargado.meses.agosto.nota) >= 4.5 ? 'green' : 'red',
+                      color: parseFloat(encargado.meses.agosto.nota) >= 4.6 ? 'green' : 'red',
                       fontWeight: 'bold'
                     }}>
                       {encargado.meses.agosto.nota}
@@ -949,7 +949,7 @@ function MetricasEncargados() {
                   <TableRow style={{ backgroundColor: '#000', color: '#fff' }}>
                     <TableCell style={{ color: '#fff', fontWeight: 'bold', border: '1px solid #ddd' }}>Nombre</TableCell>
                     <TableCell align="center" style={{ color: '#fff', fontWeight: 'bold', border: '1px solid #ddd' }}>SLA Ideal (70%)</TableCell>
-                    <TableCell align="center" style={{ color: '#fff', fontWeight: 'bold', border: '1px solid #ddd' }}>Participación Actual (70%)</TableCell>
+                    <TableCell align="center" style={{ color: '#fff', fontWeight: 'bold', border: '1px solid #ddd' }}>Participación Actual (75%)</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -963,7 +963,7 @@ function MetricasEncargados() {
                         {encargado.slaIdeal}%
                       </TableCell>
                       <TableCell align="center" style={{ 
-                        color: parseFloat(encargado.participacionActual) >= 70 ? 'green' : 'red',
+                        color: parseFloat(encargado.participacionActual) >= 75 ? 'green' : 'red',
                         fontWeight: 'bold'
                       }}>
                         {encargado.participacionActual}%
@@ -1002,7 +1002,7 @@ function MetricasEncargados() {
                   <TableRow>
                     <TableCell style={{ fontWeight: 'bold', border: '1px solid #ddd' }}>Nota</TableCell>
                     <TableCell align="center" style={{ 
-                      color: parseFloat(promediosGenerales.notaPromedio) >= 4.5 ? 'green' : 'red',
+                      color: parseFloat(promediosGenerales.notaPromedio) >= 4.6 ? 'green' : 'red',
                       fontWeight: 'bold'
                     }}>
                       {promediosGenerales.notaPromedio}
@@ -1018,9 +1018,9 @@ function MetricasEncargados() {
                     </TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell style={{ fontWeight: 'bold', border: '1px solid #ddd' }}>Participación Actual (70%)</TableCell>
+                    <TableCell style={{ fontWeight: 'bold', border: '1px solid #ddd' }}>Participación Actual (75%)</TableCell>
                     <TableCell align="center" style={{ 
-                      color: parseFloat(promediosGenerales.participacionActualPromedio) >= 70 ? 'green' : 'red',
+                      color: parseFloat(promediosGenerales.participacionActualPromedio) >= 75 ? 'green' : 'red',
                       fontWeight: 'bold'
                     }}>
                       {promediosGenerales.participacionActualPromedio}%
