@@ -549,7 +549,7 @@ const calcularDatosGraficas = (metricasMensuales) => {
   }
 
   // Calcular totales
-  const totalTiquetesAsignados = metricasMensuales.reduce((sum, encargado) => sum + encargado.tiquetesAsignadosOctubre, 0);
+  const totalTiquetesAsignados = metricasMensuales.reduce((sum, encargado) => sum + encargado.tiquetesAsignados, 0);
   const totalTiquetesResueltos = metricasMensuales.reduce((sum, encargado) => sum + encargado.tiquetesResueltos, 0);
   const totalEncuestasRespondidas = metricasMensuales.reduce((sum, encargado) => sum + encargado.encuestasRespondidas, 0);
 
