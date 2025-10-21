@@ -317,8 +317,8 @@ function PanelControl() {
 
   return (
     <div className="p-6 font-sans">
-      <Typography variant="h3" component="h1" gutterBottom>
-        Métricas Web Help Desk Soporte Sistemas - Encargados Técnicos
+      <Typography variant="h4" component="h1" gutterBottom>
+        Métricas Web Help Desk Soporte Sistemas
       </Typography>
       
       {filters.techSearch && (

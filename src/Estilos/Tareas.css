@@ -5,10 +5,9 @@
     align-items: center; 
     justify-content: center; 
     height: 100vh; 
-    /*background-color: #aaa6ca;*/
+    background-color: whitesmoke;
     background-size: cover;
     background-position: center;
-    background-image: url('../Imagenes/img1.jpg');
     padding: 20px;
     font-family: 'Roboto Condesed', sans-serif;
   }

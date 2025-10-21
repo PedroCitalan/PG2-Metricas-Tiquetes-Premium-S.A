@@ -3,14 +3,14 @@
   align-items: center;
   justify-content: center;
   height: 100vh;
-  background-image: url('../Imagenes/img1.jpg');
+  background-color: whitesmoke;
   background-size: cover;
   background-position: center;
   font-family: 'Roboto Condesed', sans-serif;
 }
 
 .login-form-container {
-  background-color: rgba(250, 250, 250, 0.7);
+  background-color: black;
   padding: 40px;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
@@ -26,7 +26,8 @@
 
 .login-form-container h1 {
   margin-bottom: 20px;
-  color: #333;
+  color: white;
+  font-weight: bold;
 }
 
 .login-form {
@@ -39,7 +40,8 @@
 .login-form label {
   margin-bottom: 8px;
   font-size: 14px;
-  color: #555;
+  color: white;
+  font-weight: bold;
 }
 
 .login-form input {
@@ -54,7 +56,8 @@
 .login-form button {
   padding: 10px;
   background-color: #4e9e57;
-  color: #fff;
+  color: white;
+  font-weight: bold;
   border: none;
   border-radius: 5px;
   font-size: 16px;
