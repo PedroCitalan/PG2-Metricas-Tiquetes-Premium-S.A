@@ -589,7 +589,7 @@ function MetricasEncargados() {
 
   useEffect(() => {
     const fetchData = () => {
-      fetch('http://localhost:3001/api/encargados', { cache: "no-store" })
+      fetch('https://metricastiquetespremiumbackend-production.up.railway.app/api/encargados', { cache: "no-store" })
         .then(response => response.json())
         .then(data => {
           if (Array.isArray(data)) {

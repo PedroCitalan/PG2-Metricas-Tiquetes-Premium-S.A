@@ -25,7 +25,7 @@ const App = () => {
     setIsAuthenticated(false);
     localStorage.removeItem('token');
     localStorage.removeItem('role');
-    await fetch('http://localhost:3001/api/logout', { method: 'POST' });
+    await fetch('https://metricastiquetespremiumbackend.onrender.com/api/logout', { method: 'POST' });
   };
 
   return (

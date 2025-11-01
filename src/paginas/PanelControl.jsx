@@ -55,7 +55,7 @@ function PanelControl() {
 
   useEffect(() => {
     const fetchData = () => {
-      fetch('http://localhost:3001/api/tickets', { cache: "no-store" })
+      fetch('https://metricastiquetespremiumbackend.onrender.com/api/tickets', { cache: "no-store" })
         .then(response => response.json())
         .then(data => {
           if (Array.isArray(data)) {
