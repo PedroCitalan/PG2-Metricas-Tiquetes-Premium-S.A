@@ -18,8 +18,8 @@ const InicioSesion = ({ onLogin }) => {
     }
     setLoading(true);
     try {
-      const response = await axios.post(`https://whdca.premium.sv/helpdesk/WebObjects/Helpdesk.woa/ra/Tickets/group/?username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`, {
-        email: email,
+      const response = await axios.post('https://metricastiquetespremiumbackend.onrender.com/api/solarwinds-login', {
+        username: email,
         password: password
       });
 
