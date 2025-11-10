@@ -3,11 +3,30 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { persistQueryClient } from '@tanstack/react-query-persist-client';
+import { createASyncStoragePersister } from '@tanstack/query-sync-storage-persister';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 1000, // 2 minutos de frescura por defecto
+      refetchOnWindowFocus: true,
+    },
+  },
+});
+
+// Persistencia del cache en localStorage
+const persister = createASyncStoragePersister({ storage: window.localStorage });
+persistQueryClient({ queryClient, persister });
+
 root.render(
   <React.StrictMode>
-    <App />
+    <QueryClientProvider client={queryClient}>
+      <App />
+    </QueryClientProvider>
   </React.StrictMode>
 );
 

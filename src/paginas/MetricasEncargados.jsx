@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Box, TextField, Button } from '@mui/material';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import '../Estilos/MetricasEncargados.css';
@@ -587,44 +588,37 @@ function MetricasEncargados() {
   const [filters, setFilters] = useState({ tech: '', semana: 'todas', mes: '2025-10' });
   const semanasFijas = obtenerSemanasFijas(filters.mes);
 
-  useEffect(() => {
-    const fetchData = () => {
-      fetch('https://metricastiquetespremiumbackend-production.up.railway.app/api/encargados', { cache: "no-store" })
-        .then(response => response.json())
-        .then(data => {
-          if (Array.isArray(data)) {
-            setTickets(data);
-            const metricasCalculadas = calcularMetricasEncargados(data);
-            const metricasSemanalesCalculadas = calcularMetricasSemanales(data, filters.mes);
-            const metricasMensualesCalculadas = calcularMetricasMensuales(data);
-            const metricasSLACalculadas = calcularMetricasSLA(data);
-            const promediosGeneralesCalculados = calcularPromediosGenerales(metricasMensualesCalculadas);
-            const datosGraficasCalculados = calcularDatosGraficas(metricasMensualesCalculadas);
-            setMetricas(metricasCalculadas);
-            setMetricasSemanales(metricasSemanalesCalculadas);
-            setMetricasMensuales(metricasMensualesCalculadas);
-            setMetricasSLA(metricasSLACalculadas);
-            setPromediosGenerales(promediosGeneralesCalculados);
-            setDatosGraficas(datosGraficasCalculados);
-            
-            // Generar archivo de notas semanales
-            generarArchivoNotasSemanales(metricasSemanalesCalculadas);
-          } else {
-            console.error('Error: Datos incorrectos', data);
-          }
-          setLoading(false);
-        })
-        .catch(error => {
-          console.error('Error al obtener los tickets:', error);
-          setLoading(false);
-        });
-    };
-    fetchData();
-    
-    const interval = setInterval(fetchData, 120000);
+  // React Query: obtener y cachear encargados
+  const { data: encargadosData, isLoading: isLoadingEncargados } = useQuery({
+    queryKey: ['encargados'],
+    queryFn: () => fetch('https://metricastiquetespremiumbackend-production.up.railway.app/api/encargados', { cache: 'no-store' }).then(r => r.json()),
+    staleTime: 120000,
+  });
 
-    return () => clearInterval(interval);
-  }, [filters.mes]);
+  // Reflejar estado de carga desde React Query
+  useEffect(() => {
+    setLoading(isLoadingEncargados);
+  }, [isLoadingEncargados]);
+
+  // Recalcular todas las métricas cuando llegan datos o cambia el mes
+  useEffect(() => {
+    if (Array.isArray(encargadosData) && encargadosData.length > 0) {
+      setTickets(encargadosData);
+      const metricasCalculadas = calcularMetricasEncargados(encargadosData);
+      const metricasSemanalesCalculadas = calcularMetricasSemanales(encargadosData, filters.mes);
+      const metricasMensualesCalculadas = calcularMetricasMensuales(encargadosData);
+      const metricasSLACalculadas = calcularMetricasSLA(encargadosData);
+      const promediosGeneralesCalculados = calcularPromediosGenerales(metricasMensualesCalculadas);
+      const datosGraficasCalculados = calcularDatosGraficas(metricasMensualesCalculadas);
+      setMetricas(metricasCalculadas);
+      setMetricasSemanales(metricasSemanalesCalculadas);
+      setMetricasMensuales(metricasMensualesCalculadas);
+      setMetricasSLA(metricasSLACalculadas);
+      setPromediosGenerales(promediosGeneralesCalculados);
+      setDatosGraficas(datosGraficasCalculados);
+      generarArchivoNotasSemanales(metricasSemanalesCalculadas);
+    }
+  }, [encargadosData, filters.mes]);
 
   // Recalcular métricas semanales cuando cambie el mes
   useEffect(() => {
