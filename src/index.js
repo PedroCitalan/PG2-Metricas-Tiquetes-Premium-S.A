@@ -5,7 +5,7 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { persistQueryClient } from '@tanstack/react-query-persist-client';
-import { createASyncStoragePersister } from '@tanstack/query-sync-storage-persister';
+import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
@@ -19,7 +19,7 @@ const queryClient = new QueryClient({
 });
 
 // Persistencia del cache en localStorage
-const persister = createASyncStoragePersister({ storage: window.localStorage });
+const persister = createSyncStoragePersister({ storage: window.localStorage });
 persistQueryClient({ queryClient, persister });
 
 root.render(
