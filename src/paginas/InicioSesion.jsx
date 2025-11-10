@@ -18,19 +18,22 @@ const InicioSesion = ({ onLogin }) => {
     }
     setLoading(true);
     try {
-      const response = await axios.post('https://whdca.premium.sv/helpdesk/WebObjects/Helpdesk.woa/ra/Tickets/group/?username=otto.hernandez&password=123456', {
+      const response = await axios.post('https://metricastiquetespremiumbackend.onrender.com/api/solarwinds-login', {
         username: email,
         password: password
       });
-      
-      const { token, role } = response.data;
+
+      const { success, token, role, message } = response.data || {};
+      if (!success || !token || !role) {
+        throw new Error(message || 'Usuario o contraseña incorrectos');
+      }
+
       localStorage.setItem('token', token);
       localStorage.setItem('role', role);
-      onLogin();
-
+      onLogin && onLogin();
       navigate('/panel-control');
     } catch (error) {
-      const errorMessage = error.response ? error.response.data.message : 'No se pudo iniciar sesión';
+      const errorMessage = error?.response?.data?.message || error.message || 'No se pudo iniciar sesión';
       alert(errorMessage);
       console.error(error);
     } finally {
