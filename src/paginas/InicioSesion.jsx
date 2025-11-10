@@ -23,14 +23,24 @@ const InicioSesion = ({ onLogin }) => {
         password: password
       });
 
-      const { token, role } = response.data;
+      // Validar estrictamente la respuesta del backend
+      const { token, role, valid } = response.data || {};
+      if (!token || !role || valid === false) {
+        throw new Error(response?.data?.message || 'Credenciales inválidas');
+      }
+
+      // Autenticación exitosa: persistir y redirigir
       localStorage.setItem('token', token);
       localStorage.setItem('role', role);
-      onLogin();
-
+      onLogin?.();
       navigate('/panel-control');
     } catch (error) {
-      const errorMessage = error.response ? error.response.data.message : 'No se pudo iniciar sesión';
+      const status = error?.response?.status;
+      const apiMsg = error?.response?.data?.message;
+      const errorMessage =
+        status === 401 || status === 403
+          ? (apiMsg || 'Usuario o contraseña incorrectos')
+          : (apiMsg || error.message || 'No se pudo iniciar sesión');
       alert(errorMessage);
       console.error(error);
     } finally {

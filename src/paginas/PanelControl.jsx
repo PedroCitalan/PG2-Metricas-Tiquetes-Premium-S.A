@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Select, MenuItem, FormControl, InputLabel, Card, CardContent, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, TextField, Button } from '@mui/material';
 import { PieChart, Pie, Cell, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, ResponsiveContainer } from 'recharts';
 import '../Estilos/PanelControl.css';
@@ -53,24 +54,17 @@ function PanelControl() {
   const [tickets, setTickets] = useState([]);
   const [filters, setFilters] = useState({ status: '', tech: '', techSearch: '', mes: '' });
 
-  useEffect(() => {
-    const fetchData = () => {
-      fetch('https://metricastiquetespremiumbackend.onrender.com/api/tickets', { cache: "no-store" })
-        .then(response => response.json())
-        .then(data => {
-          if (Array.isArray(data)) {
-            setTickets(data);
-          } else {
-            console.error('Error: Datos incorrectos', data);
-          }
-        })
-        .catch(error => console.error('Error al obtener los tickets:', error));
-    };
-    fetchData();
-    const interval = setInterval(fetchData, 120000);
+  // React Query para tickets (endpoint distinto)
+  const { data: ticketsData } = useQuery({
+    queryKey: ['tickets-panel'],
+    queryFn: () => fetch('https://metricastiquetespremiumbackend.onrender.com/api/tickets', { cache: 'no-store' }).then(r => r.json()),
+  });
 
-    return () => clearInterval(interval);
-  }, []);
+  useEffect(() => {
+    if (Array.isArray(ticketsData)) {
+      setTickets(ticketsData);
+    }
+  }, [ticketsData]);
 
   // Función para búsqueda parcial como Excel (igual que en MetricasEncargados)
   const buscarTecnico = (ticket, busqueda) => {

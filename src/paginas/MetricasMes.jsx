@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Box, Button, Select, MenuItem, FormControl, InputLabel, Checkbox, ListItemText, TextField } from '@mui/material';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import '../Estilos/PanelControl.css';
@@ -112,28 +113,20 @@ function MetricasMes() {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ tech: '', calificaciones: [], estado: '', tienda: '', marca: '', mes: '2025-10' });
 
-  useEffect(() => {
-    const fetchData = () => {
-      fetch('https://metricastiquetespremiumbackend-production.up.railway.app/api/encargados', { cache: "no-store" })
-        .then(response => response.json())
-        .then(data => {
-          if (Array.isArray(data)) {
-            setTickets(data);
-          } else {
-            console.error('Error: Datos incorrectos', data);
-          }
-          setLoading(false);
-        })
-        .catch(error => {
-          console.error('Error al obtener los tickets:', error);
-          setLoading(false);
-        });
-    };
-    fetchData();
-    const interval = setInterval(fetchData, 120000);
+  const { data: encargadosData, isLoading } = useQuery({
+    queryKey: ['encargados'],
+    queryFn: () => fetch('https://metricastiquetespremiumbackend-production.up.railway.app/api/encargados', { cache: 'no-store' }).then(r => r.json()),
+  });
 
-    return () => clearInterval(interval);
-  }, []);
+  useEffect(() => {
+    setLoading(isLoading);
+  }, [isLoading]);
+
+  useEffect(() => {
+    if (Array.isArray(encargadosData)) {
+      setTickets(encargadosData);
+    }
+  }, [encargadosData]);
 
   // Filtrar tickets por técnico seleccionado, calificaciones y estado
   const ticketsEncargados = filtrarTicketsEncargados(tickets);

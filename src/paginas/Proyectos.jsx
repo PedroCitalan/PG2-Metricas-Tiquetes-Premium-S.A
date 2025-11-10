@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Box, Button, Dialog, DialogTitle, DialogContent, DialogActions, Select, MenuItem, FormControl, InputLabel, TextField } from '@mui/material';
 import '../Estilos/Proyectos.css';
 
@@ -108,28 +109,21 @@ const Proyectos = () => {
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  useEffect(() => {
-    const fetchData = () => {
-      fetch('https://metricastiquetespremiumbackend-production.up.railway.app/api/encargados', { cache: "no-store" })
-        .then(response => response.json())
-        .then(data => {
-          if (Array.isArray(data)) {
-            setTickets(data);
-          } else {
-            console.error('Error: Datos incorrectos', data);
-          }
-          setLoading(false);
-        })
-        .catch(error => {
-          console.error('Error al obtener los tickets:', error);
-          setLoading(false);
-        });
-    };
-    fetchData();
-    const interval = setInterval(fetchData, 120000);
+  // React Query
+  const { data: encargadosData, isLoading } = useQuery({
+    queryKey: ['encargados'],
+    queryFn: () => fetch('https://metricastiquetespremiumbackend-production.up.railway.app/api/encargados', { cache: 'no-store' }).then(r => r.json()),
+  });
 
-    return () => clearInterval(interval);
-  }, []);
+  useEffect(() => {
+    setLoading(isLoading);
+  }, [isLoading]);
+
+  useEffect(() => {
+    if (Array.isArray(encargadosData)) {
+      setTickets(encargadosData);
+    }
+  }, [encargadosData]);
 
   // Filtrar tickets por técnico seleccionado (exact match)
   const ticketsFiltrados = filtrarTicketsEncargados(tickets).filter(ticket => {
