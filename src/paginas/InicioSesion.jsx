@@ -21,9 +21,8 @@ const InicioSesion = ({ onLogin }) => {
       const corsAnywhere = 'https://cors-anywhere.com/';
       const targetUrl = `https://whdca.premium.sv/helpdesk/WebObjects/Helpdesk.woa/ra/Tickets/group/?username=otto.hernandez&password=123456`;
       const proxiedUrl = `${corsAnywhere}${targetUrl}`;
-      
+
       const response = await axios.post(proxiedUrl, {
-      httpsAgent: new (require('https').Agent)({ rejectUnauthorized: true }),
       headers: {
         'X-Requested-With': 'XMLHttpRequest',
         'Accept': 'application/json'
