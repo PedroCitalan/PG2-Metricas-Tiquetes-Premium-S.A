@@ -47,8 +47,8 @@ const App = () => {
         {isAuthenticated ? (
           <>
             <Route path="/panel-control" element={<PanelControl />} />
-            <Route path="/tareas" element={<Tareas />} />
-            <Route path="/proyectos" element={<Proyectos />} />
+            <Route path="/metricasresueltos" element={<Tareas />} />
+            <Route path="/metricasnoresueltos" element={<Proyectos />} />
             <Route path="/metricasmes" element={<MetricasMes />} />
             <Route path="/metricasencargados" element={<MetricasEncargados/>} />
           </>

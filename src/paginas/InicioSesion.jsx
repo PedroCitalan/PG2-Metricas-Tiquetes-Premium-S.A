@@ -18,21 +18,12 @@ const InicioSesion = ({ onLogin }) => {
     }
     setLoading(true);
     try {
-      const corsAnywhere = 'https://cors-anywhere.com/';
-      const targetUrl = `https://whdca.premium.sv/helpdesk/WebObjects/Helpdesk.woa/ra/Tickets/group/?username=otto.hernandez&password=123456`;
-      const proxiedUrl = `${corsAnywhere}${targetUrl}`;
-
-      const response = await axios.post(proxiedUrl, {
-      headers: {
-        'X-Requested-With': 'XMLHttpRequest',
-        'Accept': 'application/json'
-      },
+       const response = await axios.post('https://metricastiquetespremiumbackend.onrender.com/api/solarwinds-login', {
         username: email,
         password: password
       });
 
       const { token, role } = response.data;
-
       localStorage.setItem('token', token);
       localStorage.setItem('role', role);
       onLogin();
