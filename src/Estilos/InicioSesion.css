@@ -1,12 +1,50 @@
-.login-page {
+.login-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: whitesmoke;
+  font-family: 'Roboto Condesed', sans-serif;
+}
+
+.login-header {
+  background-color: #000;
+  color: #fff;
+  height: 60px;
+  display: flex;
+  align-items: center;
+}
+
+.login-header-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 40px;
+}
+
+.login-logo-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #d32f2f;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100vh;
+  font-weight: bold;
+}
+
+.login-header-title {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.login-page {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background-color: whitesmoke;
   background-size: cover;
   background-position: center;
-  font-family: 'Roboto Condesed', sans-serif;
 }
 
 .login-form-container {
@@ -85,4 +123,12 @@
 
 .register-button:hover {
   background-color: #4e9e57;
+}
+
+.login-footer {
+  background-color: #000;
+  color: #fff;
+  font-size: 11px;
+  text-align: center;
+  padding: 6px 0;
 }

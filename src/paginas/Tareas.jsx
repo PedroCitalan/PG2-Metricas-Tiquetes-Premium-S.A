@@ -4,35 +4,9 @@ import { Card, CardContent, Typography, Table, TableBody, TableCell, TableContai
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import '../Estilos/Tareas.css';
 
-// Mapeo de alias para mostrar nombres de técnicos (igual que en MetricasEncargados)
-const aliasTecnicos = {
-  'Jose Castro [jose.castro]': 'Jose Castro',
-  'Jos� Morales [jose.morales]': 'José Morales', 
-  'Rolando Lopez [rolando.lopez]': 'Rolando López',
-  'Fernando Velasquez +50254892327 [fernando.velasquez]': 'Fernando Velásquez',
-  'Byron Borrayo +50254287799 [Byron.Borrayo]': 'Byron Borrayo',
-  'Juan Jose Gomez +50242105695 [Juanj.gomez]': 'Juan José Gomez',
-  'Saul Recinos [saul.recinos]': 'Saúl Recinos'
-};
+const SUPERVISORES_PERMITIDOS = ['Otto Hernandez', 'Antonio Rojas', 'Tulio Reyes'];
 
-// Función para obtener el alias de un técnico
-const obtenerAlias = (nombreOriginal) => {
-  // Buscar coincidencia exacta primero
-  if (aliasTecnicos[nombreOriginal]) {
-    return aliasTecnicos[nombreOriginal];
-  }
-  
-  // Si no hay coincidencia exacta, buscar coincidencia parcial
-  for (const [clave, alias] of Object.entries(aliasTecnicos)) {
-    if (nombreOriginal.includes(clave.split(' +')[0].split(' [')[0])) {
-      return alias;
-    }
-  }
-  
-  return nombreOriginal;
-};
-
-// Función para calcular tickets resueltos del mes
+// Función para calcular tickets resueltos del mes (por Técnico Asignado y Supervisor)
 const calcularTicketsResueltosMes = (tickets, mesSeleccionado = null) => {
   let inicioMes, finMes;
   
@@ -50,54 +24,34 @@ const calcularTicketsResueltosMes = (tickets, mesSeleccionado = null) => {
     finMes = new Date(añoActual, mesActual, 0);
   }
   
-  const tecnicosPermitidos = ['Jose Castro [jose.castro]', 'Jos� Morales [jose.morales]', 'Rolando Lopez [rolando.lopez]', 'Fernando Velasquez +50254892327 [fernando.velasquez]', 'Byron Borrayo +50254287799 [Byron.Borrayo]', 'Juan Jose Gomez +50242105695 [Juanj.gomez]', 'Saul Recinos [saul.recinos]'];
-  
-  // Función para verificar si el técnico está permitido
-  const esTecnicoPermitido = (nombre) => {
-    if (!nombre) return false;
-    if (tecnicosPermitidos.includes(nombre)) return true;
-    return tecnicosPermitidos.some(permitido => {
-      const nombrePermitido = permitido.split(' +')[0];
-      const nombrePermitidoSinUsuario = nombrePermitido.split(' [')[0];
-      return nombre.includes(nombrePermitidoSinUsuario);
-    });
-  };
-  
   const ticketsResueltos = tickets.filter(ticket => {
+    const tecnico = ticket['Tecnico Asignado'] || ticket.Tech;
+    const supervisor = (ticket.Supervisor || '').trim();
     const fechaTicket = new Date(ticket.Date);
     return (
       fechaTicket >= inicioMes && 
       fechaTicket <= finMes && 
       (ticket.Status === 'Cerrado' || ticket.Status === 'Resuelto') &&
-      esTecnicoPermitido(ticket.Tech)
+      tecnico && supervisor && SUPERVISORES_PERMITIDOS.includes(supervisor)
     );
   });
   
   return ticketsResueltos.length;
 };
 
-// Función para filtrar tickets de encargados permitidos
+// Función para filtrar tickets de encargados por Supervisor permitido
 const filtrarTicketsEncargados = (tickets) => {
-  const tecnicosPermitidos = ['Jose Castro [jose.castro]', 'Jos� Morales [jose.morales]', 'Rolando Lopez [rolando.lopez]', 'Fernando Velasquez +50254892327 [fernando.velasquez]', 'Byron Borrayo +50254287799 [Byron.Borrayo]', 'Juan Jose Gomez +50242105695 [Juanj.gomez]', 'Saul Recinos [saul.recinos]'];
-  
-  // Función para verificar si el técnico está permitido
-  const esTecnicoPermitido = (nombre) => {
-    if (!nombre) return false;
-    if (tecnicosPermitidos.includes(nombre)) return true;
-    return tecnicosPermitidos.some(permitido => {
-      const nombrePermitido = permitido.split(' +')[0];
-      const nombrePermitidoSinUsuario = nombrePermitido.split(' [')[0];
-      return nombre.includes(nombrePermitidoSinUsuario);
-    });
-  };
-  
-  return tickets.filter(ticket => esTecnicoPermitido(ticket.Tech));
+  return tickets.filter(ticket => {
+    const tecnico = ticket['Tecnico Asignado'] || ticket.Tech;
+    const supervisor = (ticket.Supervisor || '').trim();
+    return tecnico && supervisor && SUPERVISORES_PERMITIDOS.includes(supervisor);
+  });
 };
 
 const Tareas = () => {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ tech: '', calificaciones: [], fechaInicio: '', fechaFin: '', mes: '', tienda: '', marca: '' });
+  const [filters, setFilters] = useState({ tech: '', supervisor: '', calificaciones: [], fechaInicio: '', fechaFin: '', mes: '', tienda: '', marca: '' });
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
   // React Query
@@ -112,6 +66,7 @@ const Tareas = () => {
 
   useEffect(() => {
     if (Array.isArray(encargadosData)) {
+      // Usar todos los datos; el filtro de fechas aplicará el rango por defecto del mes actual
       setTickets(encargadosData);
     }
   }, [encargadosData]);
@@ -121,18 +76,31 @@ const Tareas = () => {
   const ticketsEncargados = filtrarTicketsEncargados(tickets);
   
   const ticketsFiltrados = ticketsEncargados.filter(ticket => {
+    const tecnico = ticket['Tecnico Asignado'] || ticket.Tech;
+    const supervisor = (ticket.Supervisor || '').trim();
     // Filtro por técnico (exact match)
-    const matchTech = !filters.tech || ticket.Tech === filters.tech;
+    const matchTech = !filters.tech || tecnico === filters.tech;
+    // Filtro por supervisor
+    const matchSupervisor = !filters.supervisor || supervisor === filters.supervisor;
     
     // Filtro por calificaciones
     const tieneEncuesta = ticket.Encuesta && !isNaN(parseInt(ticket.Encuesta)) && parseInt(ticket.Encuesta) >= 1 && parseInt(ticket.Encuesta) <= 5;
     const calificacion = tieneEncuesta ? parseInt(ticket.Encuesta) : 'Sin encuesta';
     const matchCalificacion = filters.calificaciones.length === 0 || filters.calificaciones.includes(calificacion);
     
-    // Filtro por fechas
+    // Filtro por fechas (por defecto mes actual si no hay selección)
     const fechaTicket = new Date(ticket.Date);
-    const matchFechaInicio = !filters.fechaInicio || fechaTicket >= new Date(filters.fechaInicio);
-    const matchFechaFin = !filters.fechaFin || fechaTicket <= new Date(filters.fechaFin);
+    const ahora = new Date();
+    const mesActual = ahora.getMonth();
+    const añoActual = ahora.getFullYear();
+    const inicioPorDefecto = new Date(añoActual, mesActual, 1);
+    const finPorDefecto = new Date(añoActual, mesActual + 1, 0);
+
+    const inicioFiltro = filters.fechaInicio ? new Date(filters.fechaInicio) : inicioPorDefecto;
+    const finFiltro = filters.fechaFin ? new Date(filters.fechaFin) : finPorDefecto;
+
+    const matchFechaInicio = fechaTicket >= inicioFiltro;
+    const matchFechaFin = fechaTicket <= finFiltro;
     
     // Filtro por tienda
     const matchTienda = !filters.tienda || (ticket.Location && ticket.Location.toLowerCase().includes(filters.tienda.toLowerCase()));
@@ -140,11 +108,11 @@ const Tareas = () => {
     // Filtro por marca
     const matchMarca = !filters.marca || (ticket.Client && ticket.Client.toLowerCase().includes(filters.marca.toLowerCase()));
     
-    return matchTech && matchCalificacion && matchFechaInicio && matchFechaFin && matchTienda && matchMarca;
+    return matchTech && matchSupervisor && matchCalificacion && matchFechaInicio && matchFechaFin && matchTienda && matchMarca;
   });
 
   // Calcular tickets resueltos del mes
-  const ticketsResueltosMes = calcularTicketsResueltosMes(tickets, filters.mes);
+  const ticketsResueltosMes = calcularTicketsResueltosMes(ticketsEncargados, filters.mes);
 
   // Generar opciones de meses disponibles
   const mesesDisponibles = Array.from(
@@ -218,7 +186,7 @@ const Tareas = () => {
         Métricas de Tiquetes Resueltos
       </Typography>
       
-      {(filters.tech || filters.calificaciones.length > 0 || filters.fechaInicio || filters.fechaFin) && (
+      {(filters.tech || filters.supervisor || filters.calificaciones.length > 0 || filters.fechaInicio || filters.fechaFin) && (
         <Typography variant="body2" color="text.secondary" gutterBottom>
           Mostrando {ticketsFiltrados.length} de {ticketsEncargados.length} tickets con filtros aplicados
         </Typography>
@@ -300,10 +268,29 @@ const Tareas = () => {
             label="Técnico"
           >
             <MenuItem value="">Todos los técnicos</MenuItem>
-            {['Jose Castro [jose.castro]', 'Jos� Morales [jose.morales]', 'Rolando Lopez [rolando.lopez]', 'Fernando Velasquez +50254892327 [fernando.velasquez]', 'Byron Borrayo +50254287799 [Byron.Borrayo]', 'Juan Jose Gomez +50242105695 [Juanj.gomez]', 'Saul Recinos [saul.recinos]'].map(tech => (
-              <MenuItem key={tech} value={tech}>
-                {obtenerAlias(tech)}
-              </MenuItem>
+            {Array.from(new Set(
+              ticketsEncargados
+                .filter(t => !filters.supervisor || (t.Supervisor || '').trim() === filters.supervisor)
+                .map(t => t['Tecnico Asignado'] || t.Tech)
+            ))
+              .filter(Boolean)
+              .map(tech => (
+                <MenuItem key={tech} value={tech}>
+                  {tech}
+                </MenuItem>
+              ))}
+          </Select>
+        </FormControl>
+        <FormControl style={{ minWidth: '200px' }}>
+          <InputLabel>Supervisor</InputLabel>
+          <Select
+            value={filters.supervisor}
+            onChange={(e) => setFilters({ ...filters, supervisor: e.target.value })}
+            label="Supervisor"
+          >
+            <MenuItem value="">Todos los supervisores</MenuItem>
+            {SUPERVISORES_PERMITIDOS.map(s => (
+              <MenuItem key={s} value={s}>{s}</MenuItem>
             ))}
           </Select>
         </FormControl>
@@ -421,7 +408,7 @@ const Tareas = () => {
               </TableHead>
               <TableBody>
                 {sortedTickets.map((ticket, index) => {
-                  const aliasTecnico = obtenerAlias(ticket.Tech);
+                  const tecnico = ticket['Tecnico Asignado'] || ticket.Tech;
                   const tieneEncuesta = ticket.Encuesta && !isNaN(parseInt(ticket.Encuesta)) && parseInt(ticket.Encuesta) >= 1 && parseInt(ticket.Encuesta) <= 5;
                   const calificacion = tieneEncuesta ? parseInt(ticket.Encuesta) : null;
                   
@@ -435,7 +422,7 @@ const Tareas = () => {
                       <TableCell style={{ border: '1px solid #ddd' }}>{ticket['No.'] || index + 1}</TableCell>
                       <TableCell style={{ border: '1px solid #ddd' }}>{new Date(ticket.Date).toLocaleDateString()}</TableCell>
                       <TableCell style={{ border: '1px solid #ddd' }}>{ticket.Status}</TableCell>
-                      <TableCell style={{ fontWeight: 'bold', border: '1px solid #ddd' }}>{aliasTecnico}</TableCell>
+                      <TableCell style={{ fontWeight: 'bold', border: '1px solid #ddd' }}>{tecnico}</TableCell>
                       <TableCell style={{ border: '1px solid #ddd' }}>{ticket.Client}</TableCell>
                       <TableCell style={{ border: '1px solid #ddd' }}>{ticket['Request Type'] || 'N/A'}</TableCell>
                       <TableCell style={{ border: '1px solid #ddd' }}>{ticket.Subject}</TableCell>

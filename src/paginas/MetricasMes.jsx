@@ -4,50 +4,15 @@ import { Card, CardContent, Typography, Table, TableBody, TableCell, TableContai
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import '../Estilos/PanelControl.css';
 
-// Mapeo de alias para mostrar nombres de técnicos (igual que en MetricasEncargados)
-const aliasTecnicos = {
-  'Jose Castro [jose.castro]': 'Jose Castro',
-  'Jos� Morales [jose.morales]': 'José Morales', 
-  'Rolando Lopez [rolando.lopez]': 'Rolando López',
-  'Fernando Velasquez +50254892327 [fernando.velasquez]': 'Fernando Velásquez',
-  'Byron Borrayo +50254287799 [Byron.Borrayo]': 'Byron Borrayo',
-  'Juan Jose Gomez +50242105695 [Juanj.gomez]': 'Juan José Gomez',
-  'Saul Recinos [saul.recinos]': 'Saúl Recinos'
-};
+const SUPERVISORES_PERMITIDOS = ['Otto Hernandez', 'Antonio Rojas', 'Tulio Reyes'];
 
-// Función para obtener el alias de un técnico
-const obtenerAlias = (nombreOriginal) => {
-  // Buscar coincidencia exacta primero
-  if (aliasTecnicos[nombreOriginal]) {
-    return aliasTecnicos[nombreOriginal];
-  }
-  
-  // Si no hay coincidencia exacta, buscar coincidencia parcial
-  for (const [clave, alias] of Object.entries(aliasTecnicos)) {
-    if (nombreOriginal.includes(clave.split(' +')[0].split(' [')[0])) {
-      return alias;
-    }
-  }
-  
-  return nombreOriginal;
-};
-
-// Función para filtrar tickets de encargados permitidos
+// Función para filtrar tickets de encargados permitidos por Supervisor y Técnico Asignado
 const filtrarTicketsEncargados = (tickets) => {
-  const tecnicosPermitidos = ['Jose Castro [jose.castro]', 'Jos� Morales [jose.morales]', 'Rolando Lopez [rolando.lopez]', 'Fernando Velasquez +50254892327 [fernando.velasquez]', 'Byron Borrayo +50254287799 [Byron.Borrayo]', 'Juan Jose Gomez +50242105695 [Juanj.gomez]', 'Saul Recinos [saul.recinos]'];
-  
-  // Función para verificar si el técnico está permitido
-  const esTecnicoPermitido = (nombre) => {
-    if (!nombre) return false;
-    if (tecnicosPermitidos.includes(nombre)) return true;
-    return tecnicosPermitidos.some(permitido => {
-      const nombrePermitido = permitido.split(' +')[0];
-      const nombrePermitidoSinUsuario = nombrePermitido.split(' [')[0];
-      return nombre.includes(nombrePermitidoSinUsuario);
-    });
-  };
-  
-  return tickets.filter(ticket => esTecnicoPermitido(ticket.Tech));
+  return tickets.filter(ticket => {
+    const tecnico = ticket['Tecnico Asignado'] || ticket.Tech;
+    const supervisor = (ticket.Supervisor || '').trim();
+    return tecnico && supervisor && SUPERVISORES_PERMITIDOS.includes(supervisor);
+  });
 };
 
 // Función para obtener tickets del mes seleccionado
@@ -111,7 +76,7 @@ const calcularEstadisticasEncuestas = (tickets) => {
 function MetricasMes() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ tech: '', calificaciones: [], estado: '', tienda: '', marca: '', mes: '2025-10' });
+  const [filters, setFilters] = useState({ tech: '', supervisor: '', calificaciones: [], estado: '', tienda: '', marca: '', mes: '2025-10' });
 
   const { data: encargadosData, isLoading } = useQuery({
     queryKey: ['encargados'],
@@ -132,8 +97,12 @@ function MetricasMes() {
   const ticketsEncargados = filtrarTicketsEncargados(tickets);
   
   const ticketsFiltrados = ticketsEncargados.filter(ticket => {
+    const tecnico = ticket['Tecnico Asignado'] || ticket.Tech;
+    const supervisor = (ticket.Supervisor || '').trim();
     // Filtro por técnico (exact match)
-    const matchTech = !filters.tech || ticket.Tech === filters.tech;
+    const matchTech = !filters.tech || tecnico === filters.tech;
+    // Filtro por supervisor
+    const matchSupervisor = !filters.supervisor || supervisor === filters.supervisor;
     
     // Filtro por calificaciones
     const tieneEncuesta = ticket.Encuesta && !isNaN(parseInt(ticket.Encuesta)) && parseInt(ticket.Encuesta) >= 1 && parseInt(ticket.Encuesta) <= 5;
@@ -157,7 +126,7 @@ function MetricasMes() {
     // Filtro por marca
     const matchMarca = !filters.marca || (ticket.Client && ticket.Client.toLowerCase().includes(filters.marca.toLowerCase()));
     
-    return matchTech && matchCalificacion && matchEstado && matchTienda && matchMarca;
+    return matchTech && matchSupervisor && matchCalificacion && matchEstado && matchTienda && matchMarca;
   });
 
   // Obtener tickets del mes seleccionado
@@ -198,7 +167,7 @@ function MetricasMes() {
         Métricas del Mes - {filters.mes ? new Date(parseInt(filters.mes.split('-')[0]), parseInt(filters.mes.split('-')[1]) - 1).toLocaleString('es-ES', { month: 'long', year: 'numeric' }) : 'Octubre 2025'}
       </Typography>
       
-      {(filters.tech || filters.calificaciones.length > 0 || filters.estado || filters.tienda || filters.marca) && (
+      {(filters.tech || filters.supervisor || filters.calificaciones.length > 0 || filters.estado || filters.tienda || filters.marca) && (
         <Typography variant="body2" color="text.secondary" gutterBottom>
           Mostrando {ticketsMesSeleccionado.length} de {obtenerTicketsMes(ticketsEncargados, filters.mes).length} tickets del mes seleccionado con filtros aplicados
         </Typography>
@@ -214,10 +183,29 @@ function MetricasMes() {
             label="Técnico"
           >
             <MenuItem value="">Todos los técnicos</MenuItem>
-            {['Jose Castro [jose.castro]', 'Jos� Morales [jose.morales]', 'Rolando Lopez [rolando.lopez]', 'Fernando Velasquez +50254892327 [fernando.velasquez]', 'Byron Borrayo +50254287799 [Byron.Borrayo]', 'Juan Jose Gomez +50242105695 [Juanj.gomez]', 'Saul Recinos [saul.recinos]'].map(tech => (
-              <MenuItem key={tech} value={tech}>
-                {obtenerAlias(tech)}
-              </MenuItem>
+            {Array.from(new Set(
+              ticketsEncargados
+                .filter(t => !filters.supervisor || (t.Supervisor || '').trim() === filters.supervisor)
+                .map(t => t['Tecnico Asignado'] || t.Tech)
+            ))
+              .filter(Boolean)
+              .map(tech => (
+                <MenuItem key={tech} value={tech}>
+                  {tech}
+                </MenuItem>
+              ))}
+          </Select>
+        </FormControl>
+        <FormControl style={{ minWidth: '200px' }}>
+          <InputLabel>Supervisor</InputLabel>
+          <Select
+            value={filters.supervisor}
+            onChange={(e) => setFilters({ ...filters, supervisor: e.target.value })}
+            label="Supervisor"
+          >
+            <MenuItem value="">Todos los supervisores</MenuItem>
+            {SUPERVISORES_PERMITIDOS.map(s => (
+              <MenuItem key={s} value={s}>{s}</MenuItem>
             ))}
           </Select>
         </FormControl>
@@ -398,7 +386,7 @@ function MetricasMes() {
               </TableHead>
               <TableBody>
                 {ticketsMesSeleccionado.map((ticket, index) => {
-                  const aliasTecnico = obtenerAlias(ticket.Tech);
+                  const tecnico = ticket['Tecnico Asignado'] || ticket.Tech;
                   const tieneEncuesta = ticket.Encuesta && !isNaN(parseInt(ticket.Encuesta)) && parseInt(ticket.Encuesta) >= 1 && parseInt(ticket.Encuesta) <= 5;
                   const calificacion = tieneEncuesta ? parseInt(ticket.Encuesta) : null;
                   const status = ticket.Status;
@@ -429,7 +417,7 @@ function MetricasMes() {
                           {status}
                         </span>
                       </TableCell>
-                      <TableCell style={{ fontWeight: 'bold', border: '1px solid #ddd' }}>{aliasTecnico}</TableCell>
+                      <TableCell style={{ fontWeight: 'bold', border: '1px solid #ddd' }}>{tecnico}</TableCell>
                       <TableCell style={{ border: '1px solid #ddd' }}>{ticket.Client}</TableCell>
                       <TableCell style={{ border: '1px solid #ddd' }}>{ticket.Subject}</TableCell>
                       <TableCell align="center" style={{ border: '1px solid #ddd' }}>

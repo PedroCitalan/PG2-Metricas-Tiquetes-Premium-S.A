@@ -38,31 +38,44 @@ const InicioSesion = ({ onLogin }) => {
   };
 
   return (
-    <div className="login-page">
-      <div className="login-form-container">
-        <h1>Iniciar Sesión</h1>
-        <form onSubmit={handleLogin} className="login-form">
-          <label htmlFor="text">Nombre de usuario</label>
-          <input
-            type="text"
-            id="text"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <label htmlFor="password">Contraseña</label>
-          <input
-            type="password"
-            id="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          <button type="submit" disabled={loading}>
-            {loading ? 'Cargando...' : 'Ingresar'}
-          </button>
-        </form>
+    <div className="login-layout">
+      <header className="login-header">
+        <div className="login-header-content">
+          <div className="login-logo-circle">P</div>
+          <span className="login-header-title">Métricas de tiquetes Web Help Desk C.A.</span>
+        </div>
+      </header>
+
+      <div className="login-page">
+        <div className="login-form-container">
+          <h1>Iniciar Sesión</h1>
+          <form onSubmit={handleLogin} className="login-form">
+            <label htmlFor="text">Nombre de usuario</label>
+            <input
+              type="text"
+              id="text"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            <label htmlFor="password">Contraseña</label>
+            <input
+              type="password"
+              id="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <button type="submit" disabled={loading}>
+              {loading ? 'Cargando...' : 'Ingresar'}
+            </button>
+          </form>
+        </div>
       </div>
+
+      <footer className="login-footer">
+        <span>Página de métricas de tiquetes de Web Help Desk C.A.</span>
+      </footer>
     </div>
   );
 };

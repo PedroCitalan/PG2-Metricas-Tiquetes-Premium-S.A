@@ -3,50 +3,15 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Box, Button, Dialog, DialogTitle, DialogContent, DialogActions, Select, MenuItem, FormControl, InputLabel, TextField } from '@mui/material';
 import '../Estilos/Proyectos.css';
 
-// Mapeo de alias para mostrar nombres de técnicos (igual que en MetricasEncargados)
-const aliasTecnicos = {
-  'Jose Castro [jose.castro]': 'Jose Castro',
-  'Jos� Morales [jose.morales]': 'José Morales', 
-  'Rolando Lopez [rolando.lopez]': 'Rolando López',
-  'Fernando Velasquez +50254892327 [fernando.velasquez]': 'Fernando Velásquez',
-  'Byron Borrayo +50254287799 [Byron.Borrayo]': 'Byron Borrayo',
-  'Juan Jose Gomez +50242105695 [Juanj.gomez]': 'Juan José Gomez',
-  'Saul Recinos [saul.recinos]': 'Saúl Recinos'
-};
+const SUPERVISORES_PERMITIDOS = ['Otto Hernandez', 'Antonio Rojas', 'Tulio Reyes'];
 
-// Función para obtener el alias de un técnico
-const obtenerAlias = (nombreOriginal) => {
-  // Buscar coincidencia exacta primero
-  if (aliasTecnicos[nombreOriginal]) {
-    return aliasTecnicos[nombreOriginal];
-  }
-  
-  // Si no hay coincidencia exacta, buscar coincidencia parcial
-  for (const [clave, alias] of Object.entries(aliasTecnicos)) {
-    if (nombreOriginal.includes(clave.split(' +')[0].split(' [')[0])) {
-      return alias;
-    }
-  }
-  
-  return nombreOriginal;
-};
-
-// Función para filtrar tickets de encargados permitidos
+// Función para filtrar tickets de encargados permitidos por Supervisor y Técnico Asignado
 const filtrarTicketsEncargados = (tickets) => {
-  const tecnicosPermitidos = ['Jose Castro [jose.castro]', 'Jos Morales [jose.morales]', 'Rolando Lopez [rolando.lopez]', 'Fernando Velasquez +50254892327 [fernando.velasquez]', 'Byron Borrayo +50254287799 [Byron.Borrayo]', 'Juan Jose Gomez +50242105695 [Juanj.gomez]', 'Saul Recinos [saul.recinos]'];
-  
-  // Función para verificar si el técnico está permitido
-  const esTecnicoPermitido = (nombre) => {
-    if (!nombre) return false;
-    if (tecnicosPermitidos.includes(nombre)) return true;
-    return tecnicosPermitidos.some(permitido => {
-      const nombrePermitido = permitido.split(' +')[0];
-      const nombrePermitidoSinUsuario = nombrePermitido.split(' [')[0];
-      return nombre.includes(nombrePermitidoSinUsuario);
-    });
-  };
-  
-  return tickets.filter(ticket => esTecnicoPermitido(ticket.Tech));
+  return tickets.filter(ticket => {
+    const tecnico = ticket['Tecnico Asignado'] || ticket.Tech;
+    const supervisor = (ticket.Supervisor || '').trim();
+    return tecnico && supervisor && SUPERVISORES_PERMITIDOS.includes(supervisor);
+  });
 };
 
 // Función para obtener tickets no resueltos ordenados por antigüedad
@@ -104,7 +69,7 @@ const determinarMotivoNoResolucion = (ticket) => {
 const Proyectos = () => {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ tech: '', tienda: '', marca: '' });
+  const [filters, setFilters] = useState({ tech: '', supervisor: '', tienda: '', marca: '' });
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -127,11 +92,14 @@ const Proyectos = () => {
 
   // Filtrar tickets por técnico seleccionado (exact match)
   const ticketsFiltrados = filtrarTicketsEncargados(tickets).filter(ticket => {
-    const matchTech = !filters.tech || ticket.Tech === filters.tech;
+    const tecnico = ticket['Tecnico Asignado'] || ticket.Tech;
+    const supervisor = (ticket.Supervisor || '').trim();
+    const matchTech = !filters.tech || tecnico === filters.tech;
+    const matchSupervisor = !filters.supervisor || supervisor === filters.supervisor;
     const matchTienda = !filters.tienda || (ticket.Location && ticket.Location.toLowerCase().includes(filters.tienda.toLowerCase()));
     const matchMarca = !filters.marca || (ticket.Client && ticket.Client.toLowerCase().includes(filters.marca.toLowerCase()));
     
-    return matchTech && matchTienda && matchMarca;
+    return matchTech && matchSupervisor && matchTienda && matchMarca;
   });
 
   // Función para ordenar
@@ -206,7 +174,7 @@ const Proyectos = () => {
         </Typography>
       )}
       
-      {/* Filtro de Técnicos */}
+      {/* Filtros de Técnicos y Supervisor */}
       <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
         <FormControl style={{ minWidth: '200px' }}>
           <InputLabel>Técnico</InputLabel>
@@ -216,10 +184,29 @@ const Proyectos = () => {
             label="Técnico"
           >
             <MenuItem value="">Todos los técnicos</MenuItem>
-            {['Jose Castro [jose.castro]', 'Jos� Morales [jose.morales]', 'Rolando Lopez [rolando.lopez]', 'Fernando Velasquez +50254892327 [fernando.velasquez]', 'Byron Borrayo +50254287799 [Byron.Borrayo]', 'Juan Jose Gomez +50242105695 [Juanj.gomez]', 'Saul Recinos [saul.recinos]'].map(tech => (
-              <MenuItem key={tech} value={tech}>
-                {obtenerAlias(tech)}
-              </MenuItem>
+            {Array.from(new Set(
+              filtrarTicketsEncargados(tickets)
+                .filter(t => !filters.supervisor || (t.Supervisor || '').trim() === filters.supervisor)
+                .map(t => t['Tecnico Asignado'] || t.Tech)
+            ))
+              .filter(Boolean)
+              .map(tech => (
+                <MenuItem key={tech} value={tech}>
+                  {tech}
+                </MenuItem>
+              ))}
+          </Select>
+        </FormControl>
+        <FormControl style={{ minWidth: '200px' }}>
+          <InputLabel>Supervisor</InputLabel>
+          <Select
+            value={filters.supervisor}
+            onChange={(e) => setFilters({ ...filters, supervisor: e.target.value })}
+            label="Supervisor"
+          >
+            <MenuItem value="">Todos los supervisores</MenuItem>
+            {SUPERVISORES_PERMITIDOS.map(s => (
+              <MenuItem key={s} value={s}>{s}</MenuItem>
             ))}
           </Select>
         </FormControl>
@@ -305,7 +292,6 @@ const Proyectos = () => {
               </TableHead>
               <TableBody>
                 {top10TicketsNoResueltos.map((ticket, index) => {
-                  const aliasTecnico = obtenerAlias(ticket.Tech);
                   const diasTranscurridos = calcularDiasTranscurridos(ticket.Date);
                   const motivoNoResolucion = determinarMotivoNoResolucion(ticket);
                   const esUrgente = index < 3; // Primeros 3 son urgentes
@@ -329,7 +315,7 @@ const Proyectos = () => {
                         {diasTranscurridos} días
                       </TableCell>
                       <TableCell style={{ border: '1px solid #ddd' }}>{ticket.Status}</TableCell>
-                      <TableCell style={{ fontWeight: 'bold', border: '1px solid #ddd' }}>{aliasTecnico}</TableCell>
+                      <TableCell style={{ fontWeight: 'bold', border: '1px solid #ddd' }}>{ticket['Tecnico Asignado'] || ticket.Tech}</TableCell>
                       <TableCell style={{ border: '1px solid #ddd' }}>{ticket.Client}</TableCell>
                       <TableCell style={{ border: '1px solid #ddd' }}>{ticket['Request Type'] || 'N/A'}</TableCell>
                       <TableCell style={{ border: '1px solid #ddd' }}>{ticket.Subject}</TableCell>
@@ -368,7 +354,7 @@ const Proyectos = () => {
                   Información General:
                 </Typography>
                 <Typography style={{ border: '1px solid #ddd', padding: '8px' }}><strong>Cliente:</strong> {selectedTicket.Client}</Typography>
-                <Typography style={{ border: '1px solid #ddd', padding: '8px' }}><strong>Técnico:</strong> {obtenerAlias(selectedTicket.Tech)}</Typography>
+                <Typography style={{ border: '1px solid #ddd', padding: '8px' }}><strong>Técnico:</strong> {selectedTicket['Tecnico Asignado'] || selectedTicket.Tech}</Typography>
                 <Typography style={{ border: '1px solid #ddd', padding: '8px' }}><strong>Estado:</strong> {selectedTicket.Status}</Typography>
                 <Typography style={{ border: '1px solid #ddd', padding: '8px' }}><strong>Tipo de Solicitud:</strong> {selectedTicket['Request Type']}</Typography>
               </Box>

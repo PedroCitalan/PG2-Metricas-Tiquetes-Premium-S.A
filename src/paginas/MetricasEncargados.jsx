@@ -1,44 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Box, TextField, Button } from '@mui/material';
+import { Card, CardContent, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Box, TextField, Button, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import '../Estilos/MetricasEncargados.css';
 
-// Mapeo de alias para mostrar nombres de técnicos
-const aliasTecnicos = {
-  'Jose Castro [jose.castro]': 'José Castro',
-  'Jos� Morales [jose.morales]': 'José Morales', 
-  'Rolando Lopez [rolando.lopez]': 'Rolando López',
-  'Fernando Velasquez +50254892327 [fernando.velasquez]': 'Fernando Velásquez',
-  'Byron Borrayo +50254287799 [Byron.Borrayo]': 'Byron Borrayo',
-  'Juan Jose Gomez +50242105695 [Juanj.gomez]': 'Juan José Gomez',
-  'Saul Recinos [saul.recinos]': 'Saúl Recinos'
-};
+const SUPERVISORES_PERMITIDOS = ['Otto Hernandez', 'Antonio Rojas', 'Tulio Reyes'];
 
-// Función para obtener el alias de un técnico
-const obtenerAlias = (nombreOriginal) => {
-  // Buscar coincidencia exacta primero
-  if (aliasTecnicos[nombreOriginal]) {
-    return aliasTecnicos[nombreOriginal];
-  }
-  
-  // Si no hay coincidencia exacta, buscar coincidencia parcial
-  for (const [clave, alias] of Object.entries(aliasTecnicos)) {
-    if (nombreOriginal.includes(clave.split(' +')[0].split(' [')[0])) {
-      return alias;
-    }
-  }
-  
-  return nombreOriginal;
-};
-
-// Función para calcular métricas de encargados
+// Función para calcular métricas de encargados (basadas en Tecnico Asignado y Supervisor)
 const calcularMetricasEncargados = (tickets) => {
     const encargados = {};
     const fechaActual = new Date();
     const mesActual = fechaActual.getMonth() + 1;
     const añoActual = fechaActual.getFullYear();
-    
+
     // Fechas para el mes actual
     const inicioMesActual = new Date(añoActual, mesActual - 1, 1);
     const finMesActual = new Date(añoActual, mesActual, 0);
@@ -48,33 +22,16 @@ const calcularMetricasEncargados = (tickets) => {
     const finMesAnterior = new Date(añoActual, mesActual - 1, 0);
     
     tickets.forEach((ticket) => {
-      const tecnicoOriginal = ticket['Tech'];
-      const tecnicosPermitidos = ['Jose Castro [jose.castro]', 'Jos� Morales [jose.morales]', 'Rolando Lopez [rolando.lopez]', 'Fernando Velasquez +50254892327 [fernando.velasquez]', 'Byron Borrayo +50254287799 [Byron.Borrayo]', 'Juan Jose Gomez +50242105695 [Juanj.gomez]', 'Saul Recinos [saul.recinos]'];
-      // Función para verificar si el técnico está permitido (coincidencia exacta o parcial estricta)
-      const esTecnicoPermitido = (nombre) => {
-        if (!nombre) return false;
-        
-        // Primero verificar coincidencia exacta
-        if (tecnicosPermitidos.includes(nombre)) return true;
-        
-        // Luego verificar si el nombre contiene alguno de los técnicos permitidos completos
-        return tecnicosPermitidos.some(permitido => {
-          // Extraer solo el nombre y apellido del técnico permitido (sin teléfono y usuario)
-          const nombrePermitido = permitido.split(' +')[0]; // Quita el teléfono
-          const nombrePermitidoSinUsuario = nombrePermitido.split(' [')[0]; // Quita el usuario
-          
-          // Verificar si el nombre del CSV contiene el nombre permitido completo
-          return nombre.includes(nombrePermitidoSinUsuario);
-        });
-      };
-      
-      if (!tecnicoOriginal || !esTecnicoPermitido(tecnicoOriginal)) return;
-      const aliasTecnico = obtenerAlias(tecnicoOriginal);
-      
-      if (!encargados[tecnicoOriginal]) {
-        encargados[tecnicoOriginal] = {
-          nombre: aliasTecnico,
-          nombreOriginal: tecnicoOriginal,
+      const tecnicoAsignado = ticket['Tecnico Asignado'] || ticket['Tech'];
+      const supervisor = (ticket['Supervisor'] || '').trim();
+
+      if (!tecnicoAsignado || !supervisor || !SUPERVISORES_PERMITIDOS.includes(supervisor)) return;
+
+      if (!encargados[tecnicoAsignado]) {
+        encargados[tecnicoAsignado] = {
+          nombre: tecnicoAsignado,
+          nombreOriginal: tecnicoAsignado,
+          supervisor,
           tiquetesAsignados: 0,
           tiquetesResueltos: 0,
           encuestasRespondidas: 0,
@@ -91,17 +48,17 @@ const calcularMetricasEncargados = (tickets) => {
       
       // Verificar si el ticket está en el mes actual
       if (fechaTicket >= inicioMesActual && fechaTicket <= finMesActual) {
-        encargados[tecnicoOriginal].tiquetesAsignados++;
+        encargados[tecnicoAsignado].tiquetesAsignados++;
         
         if (ticket.Status === 'Cerrado') {
-          encargados[tecnicoOriginal].tiquetesResueltos++;
+          encargados[tecnicoAsignado].tiquetesResueltos++;
         }
         
         if (ticket.Encuesta && !isNaN(parseInt(ticket.Encuesta))) {
           const calificacion = parseInt(ticket.Encuesta);
           if (calificacion >= 1 && calificacion <= 5) {
-            encargados[tecnicoOriginal].encuestasRespondidas++;
-            encargados[tecnicoOriginal].encuestasDetalle[calificacion]++;
+            encargados[tecnicoAsignado].encuestasRespondidas++;
+            encargados[tecnicoAsignado].encuestasDetalle[calificacion]++;
           }
         }
       }
@@ -111,7 +68,7 @@ const calcularMetricasEncargados = (tickets) => {
         if (ticket.Encuesta && !isNaN(parseInt(ticket.Encuesta))) {
           const calificacion = parseInt(ticket.Encuesta);
           if (calificacion >= 1 && calificacion <= 5) {
-            encargados[tecnicoOriginal].encuestasDetalleAnterior[calificacion]++;
+            encargados[tecnicoAsignado].encuestasDetalleAnterior[calificacion]++;
           }
         }
       }
@@ -180,32 +137,18 @@ const formatearFechaCorta = (fecha) => {
   return `${dia}/${mes}`;
 };
 
-// Función para calcular métricas semanales
+// Función para calcular métricas semanales (por Técnico Asignado y Supervisor)
 const calcularMetricasSemanales = (tickets, mesSeleccionado = '2025-10') => {
   const encargados = {};
   const semanas = obtenerSemanasFijas(mesSeleccionado);
 
-  const tecnicosPermitidos = ['Jose Castro [jose.castro]', 'Jos� Morales [jose.morales]', 'Rolando Lopez [rolando.lopez]', 'Fernando Velasquez +50254892327 [fernando.velasquez]', 'Byron Borrayo +50254287799 [Byron.Borrayo]', 'Juan Jose Gomez +50242105695 [Juanj.gomez]', 'Saul Recinos [saul.recinos]'];
-  
   tickets.forEach((ticket) => {
-    const tecnicoOriginal = ticket['Tech'];
-    
-    // Función para verificar si el técnico está permitido
-    const esTecnicoPermitido = (nombre) => {
-      if (!nombre) return false;
-      if (tecnicosPermitidos.includes(nombre)) return true;
-      return tecnicosPermitidos.some(permitido => {
-        const nombrePermitido = permitido.split(' +')[0];
-        const nombrePermitidoSinUsuario = nombrePermitido.split(' [')[0];
-        return nombre.includes(nombrePermitidoSinUsuario);
-      });
-    };
-    
-    if (!tecnicoOriginal || !esTecnicoPermitido(tecnicoOriginal)) return;
-    
-    const aliasTecnico = obtenerAlias(tecnicoOriginal);
-    
-    if (!encargados[tecnicoOriginal]) {
+    const tecnico = ticket['Tecnico Asignado'] || ticket['Tech'];
+    const supervisor = (ticket['Supervisor'] || '').trim();
+
+    if (!tecnico || !supervisor || !SUPERVISORES_PERMITIDOS.includes(supervisor)) return;
+
+    if (!encargados[tecnico]) {
       // Crear estructura dinámica de semanas
       const semanasEstructura = {};
       semanas.forEach((_, index) => {
@@ -219,9 +162,10 @@ const calcularMetricasSemanales = (tickets, mesSeleccionado = '2025-10') => {
         };
       });
       
-      encargados[tecnicoOriginal] = {
-        nombre: aliasTecnico,
-        nombreOriginal: tecnicoOriginal,
+      encargados[tecnico] = {
+        nombre: tecnico,
+        nombreOriginal: tecnico,
+        supervisor,
         tiquetesAsignados: 0,
         tiquetesResueltos: 0,
         encuestasRespondidas: 0,
@@ -241,20 +185,20 @@ const calcularMetricasSemanales = (tickets, mesSeleccionado = '2025-10') => {
     });
     
     if (semanaActual) {
-      encargados[tecnicoOriginal].tiquetesAsignados++;
-      encargados[tecnicoOriginal].semanas[semanaActual].totalTiquetes++;
+      encargados[tecnico].tiquetesAsignados++;
+      encargados[tecnico].semanas[semanaActual].totalTiquetes++;
       
       if (ticket.Status === 'Cerrado') {
-        encargados[tecnicoOriginal].tiquetesResueltos++;
-        encargados[tecnicoOriginal].semanas[semanaActual].totalTiquetesResueltos++;
+        encargados[tecnico].tiquetesResueltos++;
+        encargados[tecnico].semanas[semanaActual].totalTiquetesResueltos++;
       }
       
       if (ticket.Encuesta && !isNaN(parseInt(ticket.Encuesta))) {
         const calificacion = parseInt(ticket.Encuesta);
         if (calificacion >= 1 && calificacion <= 5) {
-          encargados[tecnicoOriginal].encuestasRespondidas++;
-          encargados[tecnicoOriginal].semanas[semanaActual].totalEncuestas++;
-          encargados[tecnicoOriginal].semanas[semanaActual].encuestasDetalle[calificacion]++;
+          encargados[tecnico].encuestasRespondidas++;
+          encargados[tecnico].semanas[semanaActual].totalEncuestas++;
+          encargados[tecnico].semanas[semanaActual].encuestasDetalle[calificacion]++;
         }
       }
     }
@@ -289,7 +233,7 @@ const calcularMetricasSemanales = (tickets, mesSeleccionado = '2025-10') => {
   return Object.values(encargados);
 };
 
-// Función para calcular métricas mensuales
+// Función para calcular métricas mensuales (por Técnico Asignado y Supervisor)
 const calcularMetricasMensuales = (tickets) => {
   const encargados = {};
   
@@ -297,31 +241,18 @@ const calcularMetricasMensuales = (tickets) => {
   const octubre = { inicio: new Date(2025, 9, 1), fin: new Date(2025, 9, 31) };
   const septiembre = { inicio: new Date(2025, 8, 1), fin: new Date(2025, 8, 30) };
   const agosto = { inicio: new Date(2025, 7, 1), fin: new Date(2025, 7, 31) };
-
-  const tecnicosPermitidos = ['Jose Castro [jose.castro]', 'Jos� Morales [jose.morales]', 'Rolando Lopez [rolando.lopez]', 'Fernando Velasquez +50254892327 [fernando.velasquez]', 'Byron Borrayo +50254287799 [Byron.Borrayo]', 'Juan Jose Gomez +50242105695 [Juanj.gomez]', 'Saul Recinos [saul.recinos]'];
   
   tickets.forEach((ticket) => {
-    const tecnicoOriginal = ticket['Tech'];
+    const tecnico = ticket['Tecnico Asignado'] || ticket['Tech'];
+    const supervisor = (ticket['Supervisor'] || '').trim();
+
+    if (!tecnico || !supervisor || !SUPERVISORES_PERMITIDOS.includes(supervisor)) return;
     
-    // Función para verificar si el técnico está permitido
-    const esTecnicoPermitido = (nombre) => {
-      if (!nombre) return false;
-      if (tecnicosPermitidos.includes(nombre)) return true;
-      return tecnicosPermitidos.some(permitido => {
-        const nombrePermitido = permitido.split(' +')[0];
-        const nombrePermitidoSinUsuario = nombrePermitido.split(' [')[0];
-        return nombre.includes(nombrePermitidoSinUsuario);
-      });
-    };
-    
-    if (!tecnicoOriginal || !esTecnicoPermitido(tecnicoOriginal)) return;
-    
-    const aliasTecnico = obtenerAlias(tecnicoOriginal);
-    
-    if (!encargados[tecnicoOriginal]) {
-      encargados[tecnicoOriginal] = {
-        nombre: aliasTecnico,
-        nombreOriginal: tecnicoOriginal,
+    if (!encargados[tecnico]) {
+      encargados[tecnico] = {
+        nombre: tecnico,
+        nombreOriginal: tecnico,
+        supervisor,
         tiquetesAsignados: 0,
         tiquetesResueltos: 0,
         encuestasRespondidas: 0,
@@ -349,30 +280,30 @@ const calcularMetricasMensuales = (tickets) => {
     if (mesActual) {
       // Solo contar tickets de octubre para los campos principales
       if (mesActual === 'octubre') {
-        encargados[tecnicoOriginal].tiquetesAsignados++;
+        encargados[tecnico].tiquetesAsignados++;
         if (ticket.Status === 'Cerrado') {
-          encargados[tecnicoOriginal].tiquetesResueltos++;
+          encargados[tecnico].tiquetesResueltos++;
         }
         if (ticket.Encuesta && !isNaN(parseInt(ticket.Encuesta))) {
           const calificacion = parseInt(ticket.Encuesta);
           if (calificacion >= 1 && calificacion <= 5) {
-            encargados[tecnicoOriginal].encuestasRespondidas++;
+            encargados[tecnico].encuestasRespondidas++;
           }
         }
       }
       
       // Contar para cada mes específico
-      encargados[tecnicoOriginal].meses[mesActual].totalTiquetes++;
+      encargados[tecnico].meses[mesActual].totalTiquetes++;
       
       if (ticket.Status === 'Cerrado') {
-        encargados[tecnicoOriginal].meses[mesActual].totalTiquetesResueltos++;
+        encargados[tecnico].meses[mesActual].totalTiquetesResueltos++;
       }
       
       if (ticket.Encuesta && !isNaN(parseInt(ticket.Encuesta))) {
         const calificacion = parseInt(ticket.Encuesta);
         if (calificacion >= 1 && calificacion <= 5) {
-          encargados[tecnicoOriginal].meses[mesActual].totalEncuestas++;
-          encargados[tecnicoOriginal].meses[mesActual].encuestasDetalle[calificacion]++;
+          encargados[tecnico].meses[mesActual].totalEncuestas++;
+          encargados[tecnico].meses[mesActual].encuestasDetalle[calificacion]++;
         }
       }
     }
@@ -435,37 +366,24 @@ const generarArchivoNotasSemanales = (metricasSemanales) => {
   return datosParaArchivo;
 };
 
-// Función para calcular métricas de SLA y Participación
+// Función para calcular métricas de SLA y Participación (por Técnico Asignado y Supervisor)
 const calcularMetricasSLA = (tickets) => {
   const encargados = {};
   
   // Definir octubre para el cálculo
   const octubre = { inicio: new Date(2025, 9, 1), fin: new Date(2025, 9, 31) };
 
-  const tecnicosPermitidos = ['Jose Castro [jose.castro]', 'Jos� Morales [jose.morales]', 'Rolando Lopez [rolando.lopez]', 'Fernando Velasquez +50254892327 [fernando.velasquez]', 'Byron Borrayo +50254287799 [Byron.Borrayo]', 'Juan Jose Gomez +50242105695 [Juanj.gomez]', 'Saul Recinos [saul.recinos]'];
-  
   tickets.forEach((ticket) => {
-    const tecnicoOriginal = ticket['Tech'];
-    
-    // Función para verificar si el técnico está permitido
-    const esTecnicoPermitido = (nombre) => {
-      if (!nombre) return false;
-      if (tecnicosPermitidos.includes(nombre)) return true;
-      return tecnicosPermitidos.some(permitido => {
-        const nombrePermitido = permitido.split(' +')[0];
-        const nombrePermitidoSinUsuario = nombrePermitido.split(' [')[0];
-        return nombre.includes(nombrePermitidoSinUsuario);
-      });
-    };
-    
-    if (!tecnicoOriginal || !esTecnicoPermitido(tecnicoOriginal)) return;
-    
-    const aliasTecnico = obtenerAlias(tecnicoOriginal);
-    
-    if (!encargados[tecnicoOriginal]) {
-      encargados[tecnicoOriginal] = {
-        nombre: aliasTecnico,
-        nombreOriginal: tecnicoOriginal,
+    const tecnico = ticket['Tecnico Asignado'] || ticket['Tech'];
+    const supervisor = (ticket['Supervisor'] || '').trim();
+
+    if (!tecnico || !supervisor || !SUPERVISORES_PERMITIDOS.includes(supervisor)) return;
+
+    if (!encargados[tecnico]) {
+      encargados[tecnico] = {
+        nombre: tecnico,
+        nombreOriginal: tecnico,
+        supervisor,
         tiquetesAsignadosOctubre: 0
       };
     }
@@ -474,7 +392,7 @@ const calcularMetricasSLA = (tickets) => {
     
     // Solo contar tickets de octubre
     if (fechaTicket >= octubre.inicio && fechaTicket <= octubre.fin) {
-      encargados[tecnicoOriginal].tiquetesAsignadosOctubre++;
+      encargados[tecnico].tiquetesAsignadosOctubre++;
     }
   });
 
@@ -585,7 +503,7 @@ function MetricasEncargados() {
   const [promediosGenerales, setPromediosGenerales] = useState({});
   const [datosGraficas, setDatosGraficas] = useState({});
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ tech: '', semana: 'todas', mes: '2025-10' });
+  const [filters, setFilters] = useState({ supervisor: 'Otto Hernandez', semana: 'todas', mes: '2025-10' });
   const semanasFijas = obtenerSemanasFijas(filters.mes);
 
   // React Query: obtener y cachear encargados
@@ -666,15 +584,12 @@ function MetricasEncargados() {
     }
   };
 
-  // Filtrar métricas por técnico seleccionado
-  const filteredMetricas = metricas.filter(encargado => {
-    return !filters.tech || buscarTecnico(encargado, filters.tech);
-  });
-
-  // Filtrar métricas semanales por técnico seleccionado y ordenar por nota de semana seleccionada
+  // Filtrar métricas semanales por supervisor seleccionado (excluyendo supervisores) y ordenar por nota de semana seleccionada
   const filteredMetricasSemanales = metricasSemanales
     .filter(encargado => {
-      return !filters.tech || buscarTecnico(encargado, filters.tech);
+      const matchSupervisor = !filters.supervisor || encargado.supervisor === filters.supervisor;
+      const esSupervisor = SUPERVISORES_PERMITIDOS.includes(encargado.nombre) || encargado.nombre === encargado.supervisor;
+      return matchSupervisor && !esSupervisor;
     })
     .sort((a, b) => {
       const semanaSeleccionada = (filters.semana === 'todas' || !filters.semana) ? 'semana1' : filters.semana;
@@ -683,10 +598,12 @@ function MetricasEncargados() {
       return notaB - notaA; // Orden descendente (mayor a menor)
     });
 
-  // Filtrar métricas mensuales por técnico seleccionado y ordenar por nota de octubre
+  // Filtrar métricas mensuales por supervisor seleccionado (excluyendo supervisores) y ordenar por nota de octubre
   const filteredMetricasMensuales = metricasMensuales
     .filter(encargado => {
-      return !filters.tech || buscarTecnico(encargado, filters.tech);
+      const matchSupervisor = !filters.supervisor || encargado.supervisor === filters.supervisor;
+      const esSupervisor = SUPERVISORES_PERMITIDOS.includes(encargado.nombre) || encargado.nombre === encargado.supervisor;
+      return matchSupervisor && !esSupervisor;
     })
     .sort((a, b) => {
       const notaA = parseFloat(a.meses.octubre.nota) || 0;
@@ -694,9 +611,11 @@ function MetricasEncargados() {
       return notaB - notaA; // Orden descendente (mayor a menor)
     });
 
-  // Filtrar métricas de SLA por técnico seleccionado (ya viene ordenado por SLA ideal)
+  // Filtrar métricas de SLA por supervisor seleccionado (excluyendo supervisores, ya viene ordenado por SLA ideal)
   const filteredMetricasSLA = metricasSLA.filter(encargado => {
-    return !filters.tech || buscarTecnico(encargado, filters.tech);
+    const matchSupervisor = !filters.supervisor || encargado.supervisor === filters.supervisor;
+    const esSupervisor = SUPERVISORES_PERMITIDOS.includes(encargado.nombre) || encargado.nombre === encargado.supervisor;
+    return matchSupervisor && !esSupervisor;
   });
 
   if (loading) {
@@ -713,21 +632,19 @@ function MetricasEncargados() {
         Métricas de Encargados Técnicos
       </Typography>
       
-      {filters.tech && (
-        <Typography variant="body2" color="text.secondary" gutterBottom>
-          Mostrando {filteredMetricas.length} de {metricas.length} técnicos que coinciden con "{filters.tech}"
-        </Typography>
-      )}
-      
-      <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
-        <TextField
-          fullWidth
-          label="Buscar técnico"
-          value={filters.tech}
-          onChange={(e) => setFilters({ ...filters, tech: e.target.value })}
-          placeholder="Escriba parte del nombre, teléfono o use * como comodín"
-          helperText="Busca en nombres completos."
-        />
+      <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+        <FormControl style={{ minWidth: '220px' }}>
+          <InputLabel>Supervisor</InputLabel>
+          <Select
+            value={filters.supervisor}
+            onChange={(e) => setFilters({ ...filters, supervisor: e.target.value })}
+            label="Supervisor"
+          >
+            {SUPERVISORES_PERMITIDOS.map(s => (
+              <MenuItem key={s} value={s}>{s}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
         <TextField
           select
           label="Filtrar por mes"
@@ -761,7 +678,7 @@ function MetricasEncargados() {
         </TextField>
         <Button 
           variant="outlined" 
-          onClick={() => setFilters({ tech: '', semana: 'todas', mes: '2025-10' })}
+          onClick={() => setFilters({ supervisor: 'Otto Hernandez', semana: 'todas', mes: '2025-10' })}
           style={{ minWidth: '120px' }}
         >
           Mostrar Todos
